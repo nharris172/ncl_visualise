@@ -9,8 +9,9 @@ import math
 """
 Current issues:
 Major:
--Still issues with networkx returning cannot find the node in the network
 -Sometimes it fails in the move function (line bx, by = self..... - list index out of range)
+    -This is caused by a route being returned which has a length of zero.
+    -This has been got around by treating these as cases where no route is possible, be this the case or not
 
 Other:
 -Need to sort out some flexability issues with node failure stuff
@@ -73,6 +74,7 @@ def node_removed(G, NODE_TO_REMOVE, counts):
     a_removed = str(a)[0:8]
     b_removed = str(b)[0:8]
     v = 0
+    #list_people_with_new_routes=[]
     #loop through all people
     while v < len(people):
         #get start and end waypoints - don't need the others atm
@@ -107,6 +109,7 @@ def node_removed(G, NODE_TO_REMOVE, counts):
                 #if a new route has been found
                 i.waypoints = new_route
                 count_new_routes += 1
+                #list_people_with_new_routes.append(v)
         #check if the node removed is the destination for the person
         elif a_end == a_removed and b_end == b_removed:
             count_end_node_removed += 1
@@ -121,6 +124,7 @@ def node_removed(G, NODE_TO_REMOVE, counts):
             else:
                 i.waypoints = new_route
                 count_new_routes += 1
+                #list_people_with_new_routes.append(v)
         else:
             for origin, dest in people[v].waypoints:
                 #search through all the waypoints
@@ -139,27 +143,26 @@ def node_removed(G, NODE_TO_REMOVE, counts):
                     else:
                         i.waypoints = new_route
                         count_new_routes += 1
+                        #list_people_with_new_routes.append(v)
                     break
         v += 1
+    #print 'people with new routes: ', list_people_with_new_routes
     counts = count_new_routes,count_start_node_removed,count_end_node_removed,count_no_route_possible
     return G, counts
 
 def nearest_node(G, NODE_TO_REMOVE):
-    """Find the nearest station to a station"""
-    #this method needs optimising and a bit of edditing
-    #find the nearest station to that removed
+    """Find the nearest station to NODE_TO_REMOVE"""
     #this will be geogrpahical as best arrpoximator for a pedestrian rather than track length
-    #this is not finished as it may causing an error
-    updated_stations=[]    
-    for item in stations:        
+    updated_stations=[]
+    for item in stations_truncated:        
         updated_stations.append(item)
     #updated_stations.remove(stations[station_removed])
-    e_removed, n_removed = stations[NODE_TO_REMOVE]
+    e_removed, n_removed = stations_truncated[NODE_TO_REMOVE]
     mindiff = 9999999999999999999.0
     u = 0
     #for each of the stations in updated stations
     for e_station,n_station in updated_stations:
-        if e_station == e_removed:
+        if e_station == e_removed and n_station == n_removed:
             #if the station is the one which has been been removed
             pass
         else:
@@ -207,7 +210,14 @@ def create_waypoints(G, start, end):
         path =[]
         for j in range(len(route)-1):
             path.append(metro_links[(route[j],route[j+1])])
-        new_route = path
+        if len(path) == 0:
+            #this should not happen but does rarely - need to find out why networkx returns a route of length nothing
+            #for those affected, we say no route possible
+            print 'found new route with no length'
+            #print 'route is: ', route
+            new_route = False
+        else:
+            new_route = path
     except nx.NetworkXNoPath:
         #no route possible
         new_route = False
@@ -230,7 +240,7 @@ WINDOWWIDTH = 900
 #as the station list is shuffeled, any old number can go here as long as below 77
 NODE_TO_REMOVE = 15
 NUMBER_OF_PEOPLE = 1000
-HOURS_TO_RUN_FOR = 3
+HOURS_TO_RUN_FOR = 1
 
 STARTTIME = datetime.datetime(2014,2,2,7) #set start start to 7 this morning
 SECONDS_PER_FRAME = 240 #set what the frame interval equals in realtime 
@@ -317,6 +327,11 @@ for shape in shapes:
 #adds all simple edges to graph
 G.add_edges_from(metro_graph_edges)
 
+#create a duplicate list of station with truncated geom
+stations_truncated = []
+for items in stations:
+    stations_truncated.append(truncate_geom(items))
+
 #this creates 1000 random metro users
 people = []
 for i in range(NUMBER_OF_PEOPLE):
@@ -348,12 +363,11 @@ while not done and not quit:
     
     if k == 0:
         G, counts = node_removed(G, NODE_TO_REMOVE, counts)
-    k += 1
-
+    k = 0        
+        
     for event in pygame.event.get(): # User did something
     		if event.type == pygame.QUIT: # If user clicked close
     			quit = True # Flag that we are done so we exit this loop
-    	
     screen.fill((0,0,255))
     #draw static objects
     # these have alreasy been converted
@@ -377,19 +391,21 @@ while not done and not quit:
     	
     done = True
     for peep in people:
-    		if not(peep.finished) :
-    			done = False # if people are still moving don't finish
-    			if vis_time > peep.start_time:
-    				lines = peep.move(SECONDS_PER_FRAME)#move people 
-    				if lines: #if they're travelled a complete segment 
-    					for line in lines:#for each segment they completed in this move
-    						if line[1] in stations:#have they been through a station
-    							stations_been[line[1]] = stations_been.get(line[1],2)
-    							stations_been[line[1]] += 0.05 #increase the size size are rounded down to the nearest int so it takes 20 visits to increse the size displayed
-    						n_line = (min(line[0],line[1]),max(line[0],line[1]))
-    						lines_been[n_line] = lines_been.get(n_line,1)
-    						lines_been[n_line] +=0.05 #increase the size size are rounded down to the nearest int so it takes 20 visits to increse the size displayed
-    				pygame.draw.circle(screen,  (255,255,255), canvas.RW_to_screen(peep.loc), 2)#draw circles at peoples locations
+         #print 'person', k
+         k+=1
+         if not(peep.finished) :
+             done = False # if people are still moving don't finish
+             if vis_time > peep.start_time:
+                 lines = peep.move(SECONDS_PER_FRAME)#move people 
+                 if lines: #if they're travelled a complete segment 
+					for line in lines:#for each segment they completed in this move
+						if line[1] in stations:#have they been through a station
+							stations_been[line[1]] = stations_been.get(line[1],2)
+							stations_been[line[1]] += 0.05 #increase the size size are rounded down to the nearest int so it takes 20 visits to increse the size displayed
+						n_line = (min(line[0],line[1]),max(line[0],line[1]))
+						lines_been[n_line] = lines_been.get(n_line,1)
+						lines_been[n_line] +=0.05 #increase the size size are rounded down to the nearest int so it takes 20 visits to increse the size displayed
+                 pygame.draw.circle(screen,  (255,255,255), canvas.RW_to_screen(peep.loc), 2)#draw circles at peoples locations
     #setup font
     myfont = pygame.font.SysFont("arial", 25)
     myfont.set_bold(True)
@@ -404,6 +420,7 @@ while not done and not quit:
     vis_time += datetime.timedelta(0,SECONDS_PER_FRAME)
     pygame.display.flip()
     clock.tick(20)#this try to draw 20 frames a second
+    k += 1
 
 count_new_routes,count_start_node_removed,count_end_node_removed,count_no_route_posssible = counts			
 print "number of people re-routed:", count_new_routes
