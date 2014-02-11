@@ -5,7 +5,6 @@ import shapefile
 import networkx as nx
 import random
 import math
-import datetime
 
 # my class designed so that i can interpolate locations of people when given waypoints,speed and starttime
 class flow_point:
