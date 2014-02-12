@@ -9,13 +9,10 @@ import math
 """
 Current issues:
 Major:
--Sometimes it fails in the move function (line bx, by = self..... - list index out of range)
-    -This is caused by a route being returned which has a length of zero.
-    -This has been got around by treating these as cases where no route is possible, be this the case or not
 
 Other:
 -Need to sort out some flexability issues with node failure stuff
--Develop nade failure methods for failure at any time step
+-Develop node failure methods for failure at any time step
 -It may be just me, but some nodes don't show until they have been traveled to, even though they have been travelled from - not 100% of this though
 
 To do/ideas:
@@ -64,7 +61,7 @@ def truncate_geom(p):
 
 def node_removed(G, NODE_TO_REMOVE, counts):
     """Updates for all people their waypoints given the removal of a station/node"""
-    count_new_routes,count_start_node_removed,count_end_node_removed,count_no_route_possible = counts
+    count_new_routes,count_start_node_removed,count_end_node_removed,count_no_route_possible,count_no_route_needed = counts
     #remove a station from the network    
     node_to_remove = truncate_geom(stations[NODE_TO_REMOVE])
     G.remove_node(node_to_remove)
@@ -74,7 +71,7 @@ def node_removed(G, NODE_TO_REMOVE, counts):
     a_removed = str(a)[0:8]
     b_removed = str(b)[0:8]
     v = 0
-    #list_people_with_new_routes=[]
+    
     #loop through all people
     while v < len(people):
         #get start and end waypoints - don't need the others atm
@@ -96,7 +93,11 @@ def node_removed(G, NODE_TO_REMOVE, counts):
             #find nearest node
             new_start_waypoint = nearest_node(G, NODE_TO_REMOVE)            
             #calculate new set of waypoints
-            new_route = create_waypoints(G, truncate_geom(new_start_waypoint), end)
+            if new_start_waypoint == end:
+                #the closest node to the origin is the dest, so no route needed
+                count_no_route_needed += 1
+            else:
+                new_route = create_waypoints(G, truncate_geom(new_start_waypoint), end)
             if new_route == False:
                 #if no route possible
                 count_no_route_possible += 1
@@ -109,12 +110,15 @@ def node_removed(G, NODE_TO_REMOVE, counts):
                 #if a new route has been found
                 i.waypoints = new_route
                 count_new_routes += 1
-                #list_people_with_new_routes.append(v)
+                
         #check if the node removed is the destination for the person
         elif a_end == a_removed and b_end == b_removed:
             count_end_node_removed += 1
-            new_end_waypoint = nearest_node(G, NODE_TO_REMOVE)      
-            new_route = create_waypoints(G, start, truncate_geom(new_end_waypoint))
+            new_end_waypoint = nearest_node(G, NODE_TO_REMOVE)
+            if start == new_end_waypoint:
+                count_no_route_needed += 1
+            else:
+                new_route = create_waypoints(G, start, truncate_geom(new_end_waypoint))
             if new_route == False:
                 count_no_route_possible += 1
                 people.remove(i)
@@ -124,7 +128,6 @@ def node_removed(G, NODE_TO_REMOVE, counts):
             else:
                 i.waypoints = new_route
                 count_new_routes += 1
-                #list_people_with_new_routes.append(v)
         else:
             for origin, dest in people[v].waypoints:
                 #search through all the waypoints
@@ -143,11 +146,9 @@ def node_removed(G, NODE_TO_REMOVE, counts):
                     else:
                         i.waypoints = new_route
                         count_new_routes += 1
-                        #list_people_with_new_routes.append(v)
                     break
         v += 1
-    #print 'people with new routes: ', list_people_with_new_routes
-    counts = count_new_routes,count_start_node_removed,count_end_node_removed,count_no_route_possible
+    counts = count_new_routes,count_start_node_removed,count_end_node_removed,count_no_route_possible,count_no_route_needed
     return G, counts
 
 def nearest_node(G, NODE_TO_REMOVE):
@@ -195,7 +196,7 @@ def nearest_node(G, NODE_TO_REMOVE):
                 good = True
                 nde = a,b                
                 break
-    
+
     if good==True:
         return nde
     else:        
@@ -213,9 +214,12 @@ def create_waypoints(G, start, end):
         if len(path) == 0:
             #this should not happen but does rarely - need to find out why networkx returns a route of length nothing
             #for those affected, we say no route possible
+            print start
+            print end
             print 'found new route with no length'
-            #print 'route is: ', route
+            print 'route is: ', route
             new_route = False
+            exit()
         else:
             new_route = path
     except nx.NetworkXNoPath:
@@ -237,10 +241,15 @@ TOPLEFT = (418046.80,572753.35)
 BOTTOMRIGHT = (440224.21,556052.84)
 WINDOWWIDTH = 900
 
-#as the station list is shuffeled, any old number can go here as long as below 77
+#failure varaibles
+NODE_FAILURE = True
+EDGE_FAILURE = False
 NODE_TO_REMOVE = 15
+EDGE_TO_REMOVE = random.randint(0,265)
+
+#simulation variables
 NUMBER_OF_PEOPLE = 1000
-HOURS_TO_RUN_FOR = 1
+HOURS_TO_RUN_FOR = 4
 
 STARTTIME = datetime.datetime(2014,2,2,7) #set start start to 7 this morning
 SECONDS_PER_FRAME = 240 #set what the frame interval equals in realtime 
@@ -260,7 +269,8 @@ count_new_routes = 0
 count_start_node_removed = 0
 count_end_node_removed = 0
 count_no_route_posssible = 0
-counts = count_new_routes,count_start_node_removed,count_end_node_removed,count_no_route_posssible 
+count_no_route_needed = 0
+counts = count_new_routes,count_start_node_removed,count_end_node_removed,count_no_route_posssible,count_no_route_needed 
 
 #Reads in shapefile for river,  and  converts them to screen coordinates
 river_polys = []
@@ -362,8 +372,14 @@ k = 0
 while not done and not quit:
     
     if k == 0:
-        G, counts = node_removed(G, NODE_TO_REMOVE, counts)
-    k = 0        
+        if NODE_FAILURE == True and EDGE_FAILURE == False:
+            G, counts = node_removed(G, NODE_TO_REMOVE, counts)
+        elif EDGE_FAILURE == True and NODE_FAILURE == False:
+            #holder for where where edge failure handler will go
+            pass        
+        else:
+            #this for the case where either might occur - if this is chosen to be implimented
+            pass
         
     for event in pygame.event.get(): # User did something
     		if event.type == pygame.QUIT: # If user clicked close
@@ -380,7 +396,6 @@ while not done and not quit:
     for build_points in build_polys:
     		pygame.draw.polygon(screen,(92,92,92),build_points)
     
-    
     #draws metro lines their thickness is changed lateron
     for key,weight in lines_been.iteritems():
     		pygame.draw.line(screen,(255,0,0),canvas.RW_to_screen(key[0]),canvas.RW_to_screen(key[1]),int(math.floor(weight)))
@@ -391,8 +406,6 @@ while not done and not quit:
     	
     done = True
     for peep in people:
-         #print 'person', k
-         k+=1
          if not(peep.finished) :
              done = False # if people are still moving don't finish
              if vis_time > peep.start_time:
@@ -420,15 +433,19 @@ while not done and not quit:
     vis_time += datetime.timedelta(0,SECONDS_PER_FRAME)
     pygame.display.flip()
     clock.tick(20)#this try to draw 20 frames a second
-    k += 1
+    k+= 1
 
-count_new_routes,count_start_node_removed,count_end_node_removed,count_no_route_posssible = counts			
+count_new_routes,count_start_node_removed,count_end_node_removed,count_no_route_posssible,count_no_route_needed = counts			
 print "number of people re-routed:", count_new_routes
 print "number of people who's start node was removed:", count_start_node_removed
 print "number of people who's destination node was removed:", count_end_node_removed
+print "number of people who's new nearest node for origin/dest was the inverse station:", count_no_route_needed
 print "number of routes not possible:", count_no_route_posssible
 print "from", str(NUMBER_OF_PEOPLE), "people who should have traveled,", str(len(people)), "did so"
-print "number of times removed station was visited:", stations_been.get(stations[NODE_TO_REMOVE])
+if NODE_FAILURE == True:
+    print "number of times removed station was visited:", stations_been.get(stations[NODE_TO_REMOVE])
+if EDGE_FAILURE == True:
+    print "number of times removed edge was traversed:", lines_been.get(metro_graph_edges[EDGE_TO_REMOVE])
 
 # Be IDLE friendly. If you forget this line, the program will 'hang'
 # on exit.
