@@ -26,7 +26,10 @@ canvas.set_background_color((0,0,255))
 
 #built_network = ncl_network_sim.build_network("networks/tyne_wear_motorways_a_b_roads_v3.shp")
 #built_network = ncl_network_sim.build_network("networks/tyne_wear_motorways_a_roads_v2.shp")
-built_network = ncl_network_sim.build_network("networks/metro_geo_rail.shp")
+#built_network = ncl_network_sim.build_network("networks/metro_geo_rail.shp")
+built_network = ncl_network_sim.build_network("C:/Users/Craig/Dropbox/tw_m_a_b_minor/tyne_wear_motor_a_b_minor_roads_4.shp")
+
+
 junctions = built_network.nodes #previusoly stations
 net_edges = built_network.edges
 
@@ -56,6 +59,7 @@ canvas.LoadStatic.Polygon("static_shps/buildings.shp",color=(92,92,92))
 
 #this creates the random people
 people = []
+routes_not_pos = 0
 for i in range(NUMBER_OF_PEOPLE):
     start,end = False,False
     while start == end:
@@ -65,8 +69,11 @@ for i in range(NUMBER_OF_PEOPLE):
         end = junctions[1]
         secs = random.randint(0,HOURS_TO_RUN_FOR*3600)
         person_start_time  = STARTTIME + datetime.timedelta(0,secs)
-        built_network.add_flow_point(start,end,person_start_time,SPEED)
+        done = built_network.add_flow_point(start,end,person_start_time,SPEED)
+    if done == False:
+        routes_not_pos += 1
 
+print "number of people who's route is not possible :", 
 #failure varaibles
 
 #year, month, day, hour, minute

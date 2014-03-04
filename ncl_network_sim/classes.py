@@ -169,8 +169,12 @@ class NclNetwork:
     
     def add_flow_point(self,start,end,start_time,speed):
         """Adds a new flow point the list."""
-        route = self._shortest_path(start,end)
-        self.flow_points.append(FlowPoint(self,route,speed,start_time))
+        route = self.create_waypoints(start,end)
+        if route <> False:
+            self.flow_points.append(FlowPoint(self,route,speed,start_time))
+            return True
+        else:
+            return False 
     
     def _shortest_path(self,start,end):
         """Finds the shortest path for a flow point and creates a set of 
