@@ -1,3 +1,0 @@
-class NclNetwork:
-    def __init__(self,nx_graph):
-        self.orig_graph = nx_graph
