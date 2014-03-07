@@ -27,11 +27,14 @@ class Canvas:
         self.size = [self.width,self.height]
         self.LoadStatic = StaticLoader(self)
         self.static = []
+        self.bg_color = (0,0,0)
+        
+    def start_screen(self,):
         pygame.init()
         #create pygame screen
         self.screen = pygame.display.set_mode(self.size)
         self.clock = pygame.time.Clock()
-        self.bg_color = (0,0,0)
+        
         
     def set_background_color(self,bg_color):
         self.bg_color = bg_color
@@ -42,8 +45,10 @@ class Canvas:
         y=float(y)
         return int((x-self.topleft[0])/(self.realworld_width/self.width)),int((self.topleft[1] - y) / (self.realworld_height/self.height))
 
-    def draw_static(self,):
+    def fill_screen(self,):
         self.screen.fill(self.bg_color)
+
+    def draw_static(self,):
         for stat in self.static:
             if stat['type'] == 'POLY':
                 for points in stat['shp']:
@@ -68,6 +73,9 @@ class Canvas:
         for event in pygame.event.get(): # User did something
             if event.type == pygame.QUIT: # If user clicked close
                 return True # Flag that we are done so we exit this loop
+            
+    def record(self,filename):
+        pygame.image.save(self.screen, filename)
             
     def tick(self,):
         pygame.display.flip()

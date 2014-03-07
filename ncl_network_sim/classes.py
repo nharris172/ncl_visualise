@@ -3,13 +3,14 @@ import datetime
 from tools import truncate_geom as _truncate_geom
 import networkx as nx
 
+
+
 class EdgeFailure:
     """Handles the failure of an edge and the associated outcomes."""
-    def __init__(self,fail,_geom,_time):
-        self.edge = True
+    def __init__(self,fail,_edge_class,_time):
         self.node = False
         self.fail_attr = fail
-        self.geom = _geom
+        self.edge = _edge_class
         self.time = _time
         self.stats = {
             'reroute':{'num':0,'print_str':'number of people re-routed :'},
@@ -20,6 +21,7 @@ class EdgeFailure:
         
     def fail(self):
         """Run the edge failure code."""
+        self.edge.failed = True
         self.fail_attr.network.edge_remove(self)
     
     def fill_stats(self,reroute,not_pos,avg_a,avg_b):
@@ -40,11 +42,10 @@ class EdgeFailure:
 class NodeFailure:
     """Handles the failure of a node from the network and the associated 
     outcomes."""
-    def __init__(self,fail,_geom,_time):
+    def __init__(self,fail,_node_class,_time):
         self.edge = False
-        self.node = True
         self.fail_attr = fail
-        self.geom = _geom
+        self.node = _node_class
         self.time = _time
         self.stats = {
             'avg_b':{'num':0,'print_str':'Average length before :'},
@@ -59,7 +60,7 @@ class NodeFailure:
         
     def fail(self):
         """Runs the failure of node."""
-        print 'node'
+        self.node.failed = True
         self.fail_attr.network.node_remove(self)
         
     def fill_stats(self,reroute,not_pos,avg_a,avg_b,start_rem,dest_rem,journey_rem,inter_node_rem):
@@ -84,15 +85,15 @@ class Failures:
         self.network = _network
         self.failures = []
         
-    def add_edge_fail(self,geom,time):
+    def add_edge_fail(self,edge,time):
         """Removes an edge and runs the resulting steps required to update 
         everything."""
-        self.failures.append(EdgeFailure(self,geom,time))
+        self.failures.append(EdgeFailure(self,edge,time))
         
-    def add_node_fail(self,geom,time):
+    def add_node_fail(self,node,time):
         """Removes a node and runs the resulting steps required to update 
         everything."""
-        self.failures.append(NodeFailure(self,geom,time))
+        self.failures.append(NodeFailure(self,node,time))
         
     def check_fails(self,):
         """Checks the failures in the list to see if any need to be run at the 
@@ -110,9 +111,8 @@ class FlowPoint:
         self.waypoints = waypoints
         self.speed = speed
         self.start_time = start_time
-        self.loc = waypoints[0][0]
-        self.speed
         self.point = 0
+        self.loc = waypoints[0].start_node.geom
         self.finished = False
         self.started = False
         self.edge = waypoints[0]
@@ -120,69 +120,177 @@ class FlowPoint:
     def move(self,time):
         """Moves the person the correct location. Updates the lists of nodes 
         and edges visited during the time step for the person as well."""
-        lines = []
         step = self.speed * time
         ax, ay = self.loc
-        bx, by = self.waypoints[self.point][1]
+        bx, by = self.edge.end_node.geom
         dist = math.hypot(bx-ax, by-ay)
         while dist < step:
-            self.loc = self.waypoints[self.point][1]
+            self.loc = self.edge.end_node.geom
             if self.point ==0:
-                if self.waypoints[self.point][0] in self.network.nodes:
-                    self.network.node_capacity[self.waypoints[self.point][0]] = self.network.node_capacity.get(self.waypoints[self.point][0],0)
-                    self.network.node_capacity[self.waypoints[self.point][0]] += 1.0
-            if self.waypoints[self.point][1] in self.network.nodes:
-                self.network.node_capacity[self.waypoints[self.point][1]] = self.network.node_capacity.get(self.waypoints[self.point][1],0)
-                self.network.node_capacity[self.waypoints[self.point][1]] += 1.0
-            self.point+=1
-            self.network.edge_capacity[self.waypoints[self.point-1]] = self.network.edge_capacity.get(self.waypoints[self.point-1],0)
-            self.network.edge_capacity[self.waypoints[self.point-1]] += 1.0
-            if self.point== len( self.waypoints):
+                if self.waypoints[self.point].start_node in self.network.nodes:
+                    self.waypoints[self.point].start_node.add_flow(self.network.time)
+            if self.waypoints[self.point].end_node in self.network.nodes:
+                self.waypoints[self.point].end_node.add_flow(self.network.time)
+            self.waypoints[self.point].add_flow(self.network.time)
+            self.point +=1
+            
+            if self.point == len( self.waypoints):
                 self.finished = True
                 self.edge = None
                 return
+            
+            self.edge = self.waypoints[self.point]
             step -= dist
-            ax, ay = self.waypoints[self.point][0]
-            bx, by = self.waypoints[self.point][1]
+            self.loc = self.edge.start_node.geom
+            ax, ay = self.waypoints[self.point].start_node.geom
+            bx, by = self.waypoints[self.point].end_node.geom
             dist = math.hypot(bx-ax, by-ay)
         bearing = math.atan2(by-ay, bx-ax)
         self.loc = (self.loc[0]+ step*math.cos(bearing),self.loc[1] + step * math.sin(bearing))
         self.edge = self.waypoints[self.point]
 
+
+
+class Node:
+    """Network Node"""
+    def __init__(self,geom,truncated_geom):
+        self.geom = geom 
+        self._truncated_geom = truncated_geom
+        self.failed = False
+        self.network = None
+        self.flows ={}
+        
+    def add_flow(self,time):
+        """store flows at each time step"""
+        self.flows[time] = self.flows.get(time,0.0)
+        self.flows[time] += 1.0
+        
+    def get_flows(self,hours=0,mins=0,secs=0):
+        """gets the number of flows in a given epoch"""
+        tot_secs = secs + (mins*60) + (hours*60*60)
+        cutoff = self.network.time - datetime.timedelta(0,tot_secs)
+        num_flows = 0
+        for time,flow in self.flows.iteritems():
+            if time > cutoff:
+                num_flows += flow
+        return num_flows
+        
+class Nodes:
+    """Network nodes"""
+    def __init__(self,nodes,truncated_geom_lookup):
+        self.nodes = nodes
+        self.truncated_geom_lookup = truncated_geom_lookup
+        
+    def add_network(self,network):
+        """Add network to each node"""
+        for node in self.nodes:
+            node.network = network
+
+
+class Edge:
+    """Network Edge"""
+    def __init__(self,start_node,end_node):
+        self.start_node = start_node 
+        self.end_node = end_node
+        self.geom = (self.start_node.geom,self.end_node.geom)
+        ax, ay = self.start_node.geom
+        bx, by = self.end_node.geom
+        self.length = math.hypot(bx-ax, by-ay)
+        self.failed = False
+        self.network = None
+        self.flows = {}
+        
+        self.reversed =  Edge_reversed(self)
+        
+    def add_flow(self,time):
+        """store flows at each time step"""
+        self.flows[time] = self.flows.get(time,0.0)
+        self.flows[time] += 1.0
+        
+    def get_flows(self,hours=0,mins=0,secs=0):
+        """gets the number of flows in a given epoch"""
+        tot_secs = secs + (mins*60) + (hours*60*60)
+        cutoff = self.network.time - datetime.timedelta(0,tot_secs)
+        num_flows = 0
+        for time,flow in self.flows.iteritems():
+            if time > cutoff:
+                num_flows += flow
+        return num_flows
+    
+class Edge_reversed:
+    """create a reversed copy of the edge but still store flow with the original edge"""
+    def __init__(self,edge):
+        self.edge = edge
+        self.start_node= self.edge.end_node
+        self.end_node = self.edge.start_node
+        self.length = self.edge.length
+        self.failed = self.edge.length
+        self.network = self.edge.network
+        
+        
+    def add_flow(self,time):
+        """add flow to orig edge"""
+        self.edge.flows[time] = self.edge.flows.get(time,0.0)
+        self.edge.flows[time] += 1.0
+
+        
+
+class Edges:
+    """Handler for the network edges"""
+    def __init__(self,edges,truncated_geom_lookup):
+        self.edges = edges
+        self.truncated_geom_lookup = truncated_geom_lookup
+    
+    def __getitem__(self,trunc_geom):
+        """fetchs the edge given a truncated geometry"""
+        flipped_trunc_geom = (trunc_geom[1],trunc_geom[0])
+        if trunc_geom in self.truncated_geom_lookup.keys():
+            return self.truncated_geom_lookup[trunc_geom]
+        #if the start and end node and the other way round fetches the revered
+        #edge
+        return self.truncated_geom_lookup[flipped_trunc_geom].reversed
+    
+    def add_network(self,network):
+        """adds the network class as an attribute to all edges"""
+        for edge in self.edges:
+            edge.network = network
+
 class NclNetwork:
     """Handler for the generic functions for the analysis and visualisation the
     network."""
-    def __init__(self,nx_graph,_nodes,_nodes_trunc,_edges,_edges_trunc):
+    def __init__(self,nx_graph,_nodes,_edges,_bbox):
         self.orig_graph = nx_graph
         self.graph = self.orig_graph.copy()
-        self.__nodes_trunc = _nodes_trunc
-        self.nodes = _nodes
-        self.__edges = _edges
-        self.edges = self.__edges.values()
-        self.__edges_trunc = _edges_trunc
+        
+        self.__nodes_class = _nodes
+        self.nodes = self.__nodes_class.nodes
+        
+        self.__nodes_class.add_network(self)
+        
+        self.__edges_class = _edges
+        self.edges = self.__edges_class.edges
+        
+        self.__edges_class.add_network(self)
+        
+        self.bbox= _bbox
+        
         self.flow_points = []
         self.Failures = Failures(self,)
-        self.edge_capacity = {}
-        self.node_capacity = {}
         self.time = None
         self.tick_rate  = None
     
     def add_flow_point(self,start,end,start_time,speed):
         """Adds a new flow point the list."""
-        route = self.create_waypoints(start,end)
-        if route <> False:
-            self.flow_points.append(FlowPoint(self,route,speed,start_time))
-            return True
-        else:
-            return False 
+        route = self._shortest_path(start,end)
+        self.flow_points.append(FlowPoint(self,route,speed,start_time))
     
     def _shortest_path(self,start,end):
         """Finds the shortest path for a flow point and creates a set of 
         waypoints given this path."""
-        route = nx.shortest_path(self.graph,source=self.__nodes_trunc[start], target=self.__nodes_trunc[end])
+        route = nx.shortest_path(self.graph,source=start._truncated_geom, target=end._truncated_geom)
         waypoints =[]
         for j in range(len(route)-1):
-            waypoints.append(self.__edges[(route[j],route[j+1])])
+            waypoints.append(self.__edges_class[(route[j],route[j+1])])
         return waypoints
     
     def create_waypoints(self,start, end):
@@ -195,20 +303,18 @@ class NclNetwork:
         except nx.NetworkXError:
             #in any other error - likley to be that it could not the node in the network - this is top of the list of bugs
             print 'Could not find node in network. ORIGIN is: %s ; DEST is: %s'%(start,end)
-            new_route = None
+            new_route = False
             #exit the appliocation
-            exit()
+            #exit()
         return new_route
     
     def edge_remove(self,edgefail):
         """Updates all affected flow points when an edge is removed from the 
         network."""
         #find the edge to remove
-        start,end = self.__edges_trunc[edgefail.geom]
-        print start,end
+        start,end = edgefail.edge.start_node,edgefail.edge.end_node
         #remove the edge from the network
-        self.graph.remove_edge(start,end)
-        start,end = edgefail.geom
+        self.graph.remove_edge(start._truncated_geom,end._truncated_geom)
         v = 0
         avg_b = self.average_journey_length()
         reroute,noroute=0,0
@@ -217,12 +323,13 @@ class NclNetwork:
             if not self.flow_points[v].finished:
                 if not self.flow_points[v].started:
                     #loop through all edges in the waypoints
-                    for origin,dest in self.flow_points[v].waypoints:
+                    for edge in self.flow_points[v].waypoints:
+                        origin,dest = edge.start_node,edge.end_node
                         #find any possible route uses the edge
                         if start == origin or start == dest or end == origin or end == dest:
                             #get start and end nodes
-                            start_waypoint, rubbish = self.flow_points[v].waypoints[0]
-                            rubbish, end_waypoint = self.flow_points[v].waypoints[-1]
+                            start_waypoint = self.flow_points[v].waypoints[0].start_node
+                            end_waypoint = self.flow_points[v].waypoints[-1].end_node
                             #calcualte the new route, if one is possible
                             new_route = self.create_waypoints(start_waypoint,end_waypoint)
                             if new_route == False:
@@ -240,12 +347,13 @@ class NclNetwork:
                             break
                 else:
                     
-                    for origin,dest in self.flow_points[v].waypoints:
+                    for edge in self.flow_points[v].waypoints:
+                        origin,dest = edge.start_node,edge.end_node
                         #find any possible route uses the edge
                         if start == origin or start == dest or end == origin or end == dest:
                             #get start and end nodes
-                            start_waypoint, rubbish = self.flow_points[v].edge
-                            rubbish, end_waypoint = self.flow_points[v].waypoints[-1]
+                            start_waypoint = self.flow_points[v].edge.start_node
+                            end_waypoint = self.flow_points[v].waypoints[-1].end_node
                             #calcualte the new route, if one is possible
                             new_route = self.create_waypoints(start_waypoint,end_waypoint)
                             if new_route == False:
@@ -276,9 +384,8 @@ class NclNetwork:
     def node_remove(self,node_fail):
         """Updates for all people their waypoints given the removal of a junction"""
         #remove a junction from the network    
-        node_to_remove =self.__nodes_trunc[node_fail.geom]
+        node_to_remove =node_fail.node._truncated_geom
         self.graph.remove_node(node_to_remove)
-        self.nodes.remove(node_fail.geom)
         avg_b = self.average_journey_length()
         v = 0
         reroute,noroute,start_rem,dest_rem,journey_rem,inter_node_rem = 0, 0, 0, 0, 0, 0
@@ -289,12 +396,12 @@ class NclNetwork:
                 #if the person has yet to set off
                 if not self.flow_points[v].started:
                     #get start and end waypoints - don't need the others atm
-                    start_waypoint, rubbish = self.flow_points[v].waypoints[0]
-                    rubbish, end_waypoint =self.flow_points[v].waypoints[-1]
+                    start_waypoint = self.flow_points[v].waypoints[0].start_node
+                    end_waypoint =self.flow_points[v].waypoints[-1].end_node
                     #check if the node removed is the start node for the person
-                    if start_waypoint == node_fail.geom:
+                    if start_waypoint == node_fail.node:
                         #find nearest node
-                        new_start_waypoint = self.nearest_node(node_fail.geom)
+                        new_start_waypoint = self.nearest_node(node_fail.node)
                         start_rem += 1
                         #calculate new set of waypoints
                         if new_start_waypoint == end_waypoint:
@@ -320,9 +427,9 @@ class NclNetwork:
                                 self.flow_points[v] = FlowPoint(self,new_route,self.flow_points[v].speed,self.flow_points[v].start_time)
                             
                     #check if the node removed is the destination for the person
-                    elif end_waypoint == node_fail.geom:
+                    elif end_waypoint == node_fail.node:
                         dest_rem += 1
-                        new_end_waypoint = self.nearest_node(node_fail.geom)     
+                        new_end_waypoint = self.nearest_node(node_fail.node)     
                         if start_waypoint == new_end_waypoint:
                             #if closest junction to end same as start - no journey needed
                             journey_rem +=1
@@ -344,10 +451,11 @@ class NclNetwork:
                                 self.flow_points[v] = FlowPoint(self,new_route,self.flow_points[v].speed,self.flow_points[v].start_time)
                                 
                     else:
-                        for origin, dest in self.flow_points[v].waypoints:
+                        for edge in self.flow_points[v].waypoints:
                             #search through all the waypoints
                             #only need to check one of the origin or dest
-                            if dest == node_fail.geom:
+                            origin, dest = edge.start_node,edge.end_node
+                            if dest == node_fail.node:
                                 inter_node_rem += 1
                                 #if a macth is found, try to establish a new route for the person
                                 new_route = self.create_waypoints(start_waypoint,end_waypoint)
@@ -369,17 +477,17 @@ class NclNetwork:
                     #method for handling the circumstance where a feature is removed when the person has is in transit
                     comp_route =[]
                     #get waypoints - the points at either end of the edge the person is on
-                    start_waypoint, rubbish = self.flow_points[v].edge
-                    rubbish, end_waypoint = self.flow_points[v].waypoints[-1]
+                    start_waypoint = self.flow_points[v].edge.start_node
+                    end_waypoint = self.flow_points[v].waypoints[-1].end_node
                     #if the node where the person started has been removed
-                    if start_waypoint== node_fail.geom:
+                    if start_waypoint== node_fail.node:
                         #it is allowed to continue
                         comp_route = [self.flow_points[v].edge]
-                        start_waypoint = self.flow_points[v].edge[1]
+                        start_waypoint = self.flow_points[v].edge.start_node
                     #if the end waypoint for the person has been removed
-                    elif end_waypoint == node_fail.geom:
+                    elif end_waypoint == node_fail.node:
                         dest_rem += 1
-                        new_end_waypoint = self.nearest_node(node_fail.geom)     
+                        new_end_waypoint = self.nearest_node(node_fail.node)     
                         if start_waypoint == new_end_waypoint:
                             #if the closest to the end is the start-remove journey
                             journey_rem +=1
@@ -407,10 +515,11 @@ class NclNetwork:
                     #if the current edge the person is on is unaffected
                     else:
                         #check the remaining route
-                        for origin, dest in self.flow_points[v].waypoints:
+                        for edge in self.flow_points[v].waypoints:
+                            origin, dest = edge.start_node,edge.end_node
                             #search through all the waypoints
                             #only need to check one of the origin or dest
-                            if dest == node_fail.geom:
+                            if dest == node_fail.node:
                                 inter_node_rem += 1
                                 #if a macth is found, try to establish a new route for the person
                                 new_route = self.create_waypoints(start_waypoint,end_waypoint)
@@ -444,23 +553,27 @@ class NclNetwork:
         #loop though all nodes
         for near in self.nodes:
             #check the node is not the one removed, else calc the dist between them
-            if self.__nodes_trunc[near] != self.__nodes_trunc[node]:
-                dist = math.hypot(near[0] - node[0], near[1] - node[1]) 
+            if near != node and not near.failed:
+                
+                dist = math.hypot(near.geom[0] - node.geom[0], near.geom[1] - node.geom[1]) 
                 dists.append(dist)
                 node_dist[dist] = near
         dists.sort()
         return node_dist[dists[0]]
         
-    def average_journey_length(self,):
-        """Calculates the average length of all journeys."""
+    def average_journey_length(self,active=False):
+        """Calculates the average length of journeys."""
         peeps_avg = []
         #go through all flow points (people)
         for peeps in self.flow_points:
+            if active:
+                if peeps.finished or peeps.started == False:
+                    continue
             peep_total = 0
             #loop through the waypoints to calc the average
-            for origin,dest in peeps.waypoints:
+            for edge in peeps.waypoints:
                 #sum the dist between waypoints
-                peep_total += self.orig_graph[self.__nodes_trunc [origin]][self.__nodes_trunc [dest]]['length']
+                peep_total += edge.length
             peeps_avg.append(peep_total)
         if len(peeps_avg) == 0:
             #if no flow points have routes
@@ -468,8 +581,37 @@ class NclNetwork:
         peeps_avg = sum(peeps_avg)/len(peeps_avg)
         return peeps_avg
     
+    def average_journey_left(self,active=False):
+        """Calculates the average length of journeys parts left"""
+        peeps_avg = []
+        #go through all flow points (people)
+        for peeps in self.flow_points:
+            if active:
+                if peeps.finished or peeps.started == False:
+                    continue
+            peep_total = 0
+            #loop through the waypoints to calc the average
+            for edge in peeps.waypoints[peeps.point:len(peeps.waypoints)]:
+                #sum the dist between waypoints
+                peep_total += edge.length
+            peeps_avg.append(peep_total)
+        if len(peeps_avg) == 0:
+            #if no flow points have routes
+            return 0
+        peeps_avg = sum(peeps_avg)/len(peeps_avg)
+        return peeps_avg
+    
+    def number_flows(self,active):
+        num = 0
+        for peeps in self.flow_points:
+            if active:
+                if peeps.finished or peeps.started == False:
+                    continue
+            num+=1
+        return num
+    
     def time_config(self,start_time, tick_rate):
-        self.time = start_time
+        self.time = start_time - datetime.timedelta(0,tick_rate)
         self.tick_rate  = tick_rate
     
     def tick(self,):

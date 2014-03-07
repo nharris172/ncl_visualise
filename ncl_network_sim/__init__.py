@@ -1,8 +1,9 @@
 import networkx as nx
 import shapefile
 import math
-from classes import NclNetwork
+from classes import NclNetwork,Nodes,Edges,Node,Edge
 from tools import truncate_geom as _truncate_geom
+
 
 def build_network(shp_file):
     sf = shapefile.Reader(shp_file)
@@ -10,53 +11,63 @@ def build_network(shp_file):
 
     #create graph
     orig_G=nx.Graph()
-
-    nodes_truncated = {}
-    edges_truncated ={}
-    edges = {}
     graph_edges = []
-    out_nodes_dict = {} 
-    node_check = {}
+    
+    
+    out_nodes = []
+    out_nodes_geom_lookup_dict = {} 
+    
+    all_nodes = []
+    all_nodes_geom_lookup_dict = {}
+    
+    edges = []
+    edge_geom_lookup_dict = {}
+    
+    left = []
+    bottom = []
+    right = []
+    top = []
     for shape in shapes:
+        l,b,r,t = shape.bbox
+        left.append(l)
+        bottom.append(b)
+        right.append(r)
+        top.append(t)
         metro_line_points = []
+        
         stat1 = shape.points[0]
         stat2 = shape.points[-1]
         #create stations out of edge end points. 
         for stat in [stat1,stat2]:
-            if stat not in out_nodes_dict.keys():
-                if _truncate_geom(stat) not in out_nodes_dict.values():
-                    out_nodes_dict[stat] = _truncate_geom(stat)
-                    node_check[_truncate_geom(stat)] = stat
+            if _truncate_geom(stat) not in out_nodes_geom_lookup_dict.keys():
+                node_class = Node(stat,_truncate_geom(stat))
+                
+                out_nodes_geom_lookup_dict[node_class._truncated_geom] = node_class
+                all_nodes_geom_lookup_dict[node_class._truncated_geom] = node_class
+                
+                out_nodes.append(node_class)
+                all_nodes.append(node_class)
+                
         for i in  range(len(shape.points)-1):
             #this creates the simplifed edges to create the network
             #the correct geometry is then stored in a dictionary so that i can go from simplfied geom to real world geom
-            p1 = node_check.get(_truncate_geom(shape.points[i]),shape.points[i])
-            p2 = node_check.get(_truncate_geom(shape.points[i+1]),shape.points[i+1])
+            p1 = all_nodes_geom_lookup_dict.get(_truncate_geom(shape.points[i]),Node(shape.points[i],_truncate_geom(shape.points[i])))
+            p2 = all_nodes_geom_lookup_dict.get(_truncate_geom(shape.points[i+1]),Node(shape.points[i+1],_truncate_geom(shape.points[i+1])))
             for p in [p1,p2]:
-                node_check[p] = _truncate_geom(p)
-                nodes_truncated[p] = _truncate_geom(p)
-            p1_rounded = _truncate_geom(p1)
-            p2_rounded = _truncate_geom(p2)
-            if (p1_rounded,p2_rounded) not in graph_edges:
-                graph_edges.append((p1_rounded,p2_rounded))
-                edges_truncated[(p1,p2)]=(p1_rounded,p2_rounded)
-                edges_truncated[(p2,p1)]=(p1_rounded,p2_rounded)
-                edges[(p1_rounded,p2_rounded)] = (p1,p2)
-                edges[(p2_rounded,p1_rounded)] = (p2,p1)
+                all_nodes_geom_lookup_dict[p._truncated_geom] = p
+            edge_class = Edge(p1,p2)
+            if (p1._truncated_geom,p2._truncated_geom) not in graph_edges:
+                graph_edges.append((p1._truncated_geom,p2._truncated_geom))
+                edge_geom_lookup_dict[(p1._truncated_geom,p2._truncated_geom)] = edge_class
+                edges.append(edge_class)
+                
     #adds all simple edges to graph
 
     orig_G.add_edges_from(graph_edges)
-    
-    
-    for origin, dest in orig_G.edges():
-        e_origin, n_origin = origin
-        e_dest, n_dest = dest
-        e_diff =  e_origin- e_dest
-        n_diff = n_origin - n_dest
-        e_diff = e_diff * e_diff
-        n_diff = n_diff * n_diff
-        diff = math.sqrt(e_diff+n_diff)
-        orig_G[origin][dest]['length'] = diff
-    
         
-    return NclNetwork(orig_G,out_nodes_dict.keys(),nodes_truncated,edges,edges_truncated)
+    _bbox = (min(left),min(bottom),max(right),max(top))
+    
+    proper_nodes = Nodes(out_nodes,out_nodes_geom_lookup_dict)
+    edges = Edges(edges,edge_geom_lookup_dict)
+    
+    return NclNetwork(orig_G,proper_nodes, edges,_bbox)
