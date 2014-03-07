@@ -61,6 +61,7 @@ RECORD = False
 
 #this creates the random people
 people = []
+routes_not_pos = 0
 for i in range(NUMBER_OF_PEOPLE):
     #ensure end doesn't equal start
     random.shuffle(junctions)
@@ -68,7 +69,11 @@ for i in range(NUMBER_OF_PEOPLE):
     end = junctions[1]
     secs = random.randint(0,HOURS_TO_RUN_FOR*3600)
     person_start_time  = STARTTIME + datetime.timedelta(0,secs)
-    built_network.add_flow_point(start,end,person_start_time,SPEED)
+    done = built_network.add_flow_point(start,end,person_start_time,SPEED)
+    if done == False:
+        routes_not_pos += 1
+
+print "number of people who's route is not possible :", routes_not_pos 
 
 #year, month, day, hour, minute
 EDGE_FAILURE_TIME = [
