@@ -2,8 +2,7 @@ import ncl_visualize
 import ncl_network_sim
 import datetime 
 import random
-import math
-import matplotlib.pyplot as plt
+
 
 """
 Current issues:
@@ -12,20 +11,34 @@ Major:
 Other:
 
 To do/ideas:
+-Do we want to check for a pre-exisitng length field?
 -In dense networks, changing colours of edges might be better than line thickness
 
 """
 
+net_source_shpfile = False
 
-#define bounding box and canvas width, height calculated from width
 
+#attribute name in shapefile/datatable - set as None if they are not in the shapefile
+speed_att = 'speed' #None #default value
+length_att = 'length' #None #default value
 
-#built_network = ncl_network_sim.build_network("networks/tyne_wear_motorways_a_b_roads_v3.shp")
-#built_network = ncl_network_sim.build_network("networks/tyne_wear_motorways_a_roads_v2.shp")
-built_network = ncl_network_sim.build_network("networks/metro_geo_rail.shp")
-junctions = built_network.nodes #previusoly stations
+if net_source_shpfile == True:
+    #built_network = ncl_network_sim.build_network("networks/tyne_wear_motorways_a_b_roads_v3.shp", speed_att, length_att)
+    #built_network = ncl_network_sim.build_network("networks/tyne_wear_motorways_a_roads_v2.shp", speed_att, length_att)
+    built_network = ncl_network_sim.build_network("networks/metro_geo_rail.shp", speed_att, length_att)
+elif net_source_shpfile == False:
+    host = 'localhost'; user = 'postgres'; port = '5433'
+    password = 'aaSD2011'
+    dbname = 'lightrail'
+    net_name = 'tyne_wear_metro_geo_w_shortcuts'
+    conn = "PG: host='%s' dbname='%s' user='%s' password='%s' port='%s'" % (host, dbname, user, password, port)
+    built_network = ncl_network_sim.build_net_from_db(conn, net_name, speed_att, length_att)
+
+junctions = built_network.nodes
 net_edges = built_network.edges
 
+#define bounding box and canvas width, height calculated from width
 LEFT,BOTTOM, RIGHT,TOP = built_network.bbox
 buffer_width = (RIGHT-LEFT)/20
 buffer_height = (TOP-BOTTOM)/20
@@ -125,6 +138,7 @@ while not done and not quit:
     canvas.draw_static()
 
     done = built_network.tick()
+    
     #draws the edges
     for edge in built_network.edges:
         #get flows from last 10 minutes
