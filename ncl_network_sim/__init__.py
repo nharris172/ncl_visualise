@@ -5,7 +5,7 @@ from classes import NclNetwork,Nodes,Edges,Node,Edge
 from tools import truncate_geom as _truncate_geom
 
 
-def build_network(shp_file, speed_att, length_att):
+def build_network(shp_file, speed_att=None,default_speed=1, length_att=None):
     sf = shapefile.Reader(shp_file)
     shapes = sf.shapes()
 
@@ -79,33 +79,34 @@ def build_network(shp_file, speed_att, length_att):
 
             for p in [p1,p2]:
                 all_nodes_geom_lookup_dict[p._truncated_geom] = p
-            edge_class = Edge(p1,p2)
             
+            info ={}
             if (p1._truncated_geom,p2._truncated_geom) not in orig_G.edges():
                 
                 #add the edge straight to the network on the discovery that it has not been added as yet
+                speed = default_speed
                 if speed_att <> None:
                     #get the speed for the edge                 
                     speed = sf.record(edge_count)[speed_field]
-                   
-                    if length_att == None:
-                        #calculate the length of the edge
-                        orig_e,orig_n = p1._truncated_geom
-                        dest_e,dest_n = p2._truncated_geom
-                        #I know this calculation can be done mch easier, but can't remember how!
-                        temp1 = (orig_e-dest_e)
-                        temp2 = (orig_n-dest_n)
-                        length = math.sqrt((temp1*temp1)+(temp2*temp2))
-                    else:
-                        length = float(sf.record(edge_count)[length_field])
-                    
-                    #calculate the time to travel the edge
-                    time = length/speed
-                    #add the edge and its attributes
-                    orig_G.add_edge(p1._truncated_geom,p2._truncated_geom,{'length':length,'speed':speed,'time':time})
+               
+                if length_att == None:
+                    #calculate the length of the edge
+                    orig_e,orig_n = p1._truncated_geom
+                    dest_e,dest_n = p2._truncated_geom
+                    #I know this calculation can be done mch easier, but can't remember how!
+                    temp1 = (orig_e-dest_e)
+                    temp2 = (orig_n-dest_n)
+                    length = math.sqrt((temp1*temp1)+(temp2*temp2))
                 else:
-                    #add the edge
-                    orig_G.add_edge(p1._truncated_geom,p2._truncated_geom)
+                    length = float(sf.record(edge_count)[length_field])
+                
+                #calculate the time to travel the edge
+                time = length/speed
+                #add the edge and its attributes
+                info = {'length':length,'speed':speed,'time':time}
+                orig_G.add_edge(p1._truncated_geom,p2._truncated_geom,info)
+
+                edge_class = Edge(p1,p2,info)
                 edge_geom_lookup_dict[(p1._truncated_geom,p2._truncated_geom)] = edge_class
                 edges.append(edge_class)
         #iterate the edge count - used to get speeds assigned to the edges

@@ -16,7 +16,7 @@ To do/ideas:
 
 """
 
-net_source_shpfile = False
+net_source_shpfile = True
 
 
 #attribute name in shapefile/datatable - set as None if they are not in the shapefile
@@ -24,9 +24,8 @@ speed_att = 'speed' #None #default value
 length_att = 'length' #None #default value
 
 if net_source_shpfile == True:
-    #built_network = ncl_network_sim.build_network("networks/tyne_wear_motorways_a_b_roads_v3.shp", speed_att, length_att)
-    #built_network = ncl_network_sim.build_network("networks/tyne_wear_motorways_a_roads_v2.shp", speed_att, length_att)
-    built_network = ncl_network_sim.build_network("networks/metro_geo_rail.shp", speed_att, length_att)
+    built_network = ncl_network_sim.build_network("networks/tyne_wear_motorways_a_roads_v2.shp", default_speed=30, length_att=length_att)
+    #built_network = ncl_network_sim.build_network("networks/metro_geo_rail.shp", speed_att=speed_att, length_att=length_att)
 elif net_source_shpfile == False:
     host = 'localhost'; user = 'postgres'; port = '5433'
     password = 'aaSD2011'
@@ -82,7 +81,7 @@ for i in range(NUMBER_OF_PEOPLE):
     end = junctions[1]
     secs = random.randint(0,HOURS_TO_RUN_FOR*3600)
     person_start_time  = STARTTIME + datetime.timedelta(0,secs)
-    done = built_network.add_flow_point(start,end,person_start_time,SPEED)
+    done = built_network.add_flow_point(start,end,person_start_time)
     if done == False:
         routes_not_pos += 1
 

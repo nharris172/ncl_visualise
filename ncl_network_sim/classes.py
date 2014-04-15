@@ -106,10 +106,9 @@ class Failures:
 class FlowPoint:
     """Handles the management of the  flowpoints and thier movement throught 
     the network during the simulation/visualisation."""
-    def __init__(self,network,waypoints,speed,start_time):
+    def __init__(self,network,waypoints,start_time):
         self.network = network
         self.waypoints = waypoints
-        self.speed = speed
         self.start_time = start_time
         self.point = 0
         self.loc = waypoints[0].start_node.geom
@@ -120,7 +119,7 @@ class FlowPoint:
     def move(self,time):
         """Moves the person the correct location. Updates the lists of nodes 
         and edges visited during the time step for the person as well."""
-        step = self.speed * time
+        step = self.edge.speed * time
         ax, ay = self.loc
         bx, by = self.edge.end_node.geom
         dist = math.hypot(bx-ax, by-ay)
@@ -189,13 +188,24 @@ class Nodes:
 
 class Edge:
     """Network Edge"""
-    def __init__(self,start_node,end_node):
+    def __init__(self,start_node,end_node,info):
         self.start_node = start_node 
         self.end_node = end_node
         self.geom = (self.start_node.geom,self.end_node.geom)
         ax, ay = self.start_node.geom
         bx, by = self.end_node.geom
-        self.length = math.hypot(bx-ax, by-ay)
+        if 'length' in info.keys():
+            self.length = info['length']
+        else:
+            self.length = math.hypot(bx-ax, by-ay)
+        if 'speed' in info.keys():
+            self.speed = info['speed']
+        else:
+            self.speed= None
+        if 'time' in info.keys():
+            self.time = info['time']
+        else:
+            self.time = None
         self.failed = False
         self.network = None
         self.flows = {}
@@ -224,6 +234,8 @@ class Edge_reversed:
         self.start_node= self.edge.end_node
         self.end_node = self.edge.start_node
         self.length = self.edge.length
+        self.speed = self.edge.speed
+        self.time = self.edge.time
         self.failed = self.edge.length
         self.network = self.edge.network
         
@@ -279,11 +291,11 @@ class NclNetwork:
         self.time = None
         self.tick_rate  = None
     
-    def add_flow_point(self,start,end,start_time,speed):
+    def add_flow_point(self,start,end,start_time):
         """Adds a new flow point the list."""
         route = self.create_waypoints(start,end)
         if route <> False:
-            self.flow_points.append(FlowPoint(self,route,speed,start_time))
+            self.flow_points.append(FlowPoint(self,route,start_time))
             return True
         else:
             return False 
@@ -291,7 +303,7 @@ class NclNetwork:
     def _shortest_path(self,start,end):
         """Finds the shortest path for a flow point and creates a set of 
         waypoints given this path."""
-        route = nx.shortest_path(self.graph,source=start._truncated_geom, target=end._truncated_geom)
+        route = nx.shortest_path(self.graph,source=start._truncated_geom, target=end._truncated_geom,weight='time')
         waypoints =[]
         for j in range(len(route)-1):
             waypoints.append(self.__edges_class[(route[j],route[j+1])])
@@ -347,7 +359,7 @@ class NclNetwork:
                             else:
                                 reroute+=1
                                 #if a route has been sucessfuly found
-                                self.flow_points[v] = FlowPoint(self,new_route,self.flow_points[v].speed,self.flow_points[v].start_time)
+                                self.flow_points[v] = FlowPoint(self,new_route,self.flow_points[v].start_time)
                             break
                 else:
                     
@@ -428,7 +440,7 @@ class NclNetwork:
                             else:
                                 #if a new route has been found update for the person
                                 reroute +=1
-                                self.flow_points[v] = FlowPoint(self,new_route,self.flow_points[v].speed,self.flow_points[v].start_time)
+                                self.flow_points[v] = FlowPoint(self,new_route,self.flow_points[v].start_time)
                             
                     #check if the node removed is the destination for the person
                     elif end_waypoint == node_fail.node:
@@ -452,7 +464,7 @@ class NclNetwork:
                             else:
                                 #new route found
                                 reroute +=1
-                                self.flow_points[v] = FlowPoint(self,new_route,self.flow_points[v].speed,self.flow_points[v].start_time)
+                                self.flow_points[v] = FlowPoint(self,new_route,self.flow_points[v].start_time)
                                 
                     else:
                         for edge in self.flow_points[v].waypoints:
@@ -474,7 +486,7 @@ class NclNetwork:
                                 else:
                                     #new route found
                                     reroute +=1
-                                    self.flow_points[v] = FlowPoint(self,new_route,self.flow_points[v].speed,self.flow_points[v].start_time)
+                                    self.flow_points[v] = FlowPoint(self,new_route,self.flow_points[v].start_time)
                                 break
                             
                 else:
