@@ -30,7 +30,7 @@ def random_failures(TIME_INTERVALS,NUMBER_OF_FAILURES,STARTTIME,NODE_EDGE_RANDOM
         else:
             secs = (TIME_INTERVALS*60) * (len(built_network.Failures.failures)+1)
             time = STARTTIME + datetime.timedelta(0,secs)
-        if NODE_EDGE_RANDOM == 'NODE_EDGE':
+        if NODE_EDGE_RANDOM == 'NODE_EDGE' or 'EDGE_NODE':
                 meth = random.randint(0,1)
                 if meth==0: meth = 'NODE'
                 else: meth = 'EDGE'

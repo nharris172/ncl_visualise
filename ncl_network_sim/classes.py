@@ -17,6 +17,8 @@ class EdgeFailure:
             'not_pos':{'num':0,'print_str':'number of people whose route was no longer possible :'},
             'avg_b':{'num':0,'print_str':'Average length before :'},
             'avg_a':{'num':0,'print_str':'Average length after :'},
+            'avg_time_b':{'num':0,'print_str':'Average travel time before :'},
+            'avg_time_a':{'num':0,'print_str':'Average travel time after :'},
         }
         
     def fail(self):
@@ -24,14 +26,15 @@ class EdgeFailure:
         self.edge.failed = True
         self.fail_attr.network.edge_remove(self)
     
-    def fill_stats(self,reroute,not_pos,avg_a,avg_b):
+    def fill_stats(self,reroute,not_pos,avg_a,avg_b,avg_time_b,avg_time_a):
         """Populate the stats dict witht the stats from the affects of the edge
         removal of the flow points."""
         self.stats['reroute']['num'] =reroute
         self.stats['not_pos']['num'] =not_pos
         self.stats['avg_a']['num'] =avg_a
         self.stats['avg_b']['num'] =avg_b
-        
+        self.stats['avg_time_b']['num'] =avg_time_b
+        self.stats['avg_time_a']['num'] =avg_time_a
 
     def print_stats(self,):
         """Prints the stats as in the stats dict."""
@@ -50,6 +53,8 @@ class NodeFailure:
         self.stats = {
             'avg_b':{'num':0,'print_str':'Average length before :'},
             'avg_a':{'num':0,'print_str':'Average length after :'},
+            'avg_time_b':{'num':0,'print_str':'Average travel time before :'},
+            'avg_time_a':{'num':0,'print_str':'Average travel time after :'},
             'start_rem':{ 'num':0,'print_str':"number of people who's start node was removed:"},
             'inter_node_rem':{'num':0,'print_str':"number of people who had a intermediate node removed:"},
             'dest_rem':{'num':0,'print_str':"number of people who's destination node was removed:"},
@@ -63,12 +68,14 @@ class NodeFailure:
         self.node.failed = True
         self.fail_attr.network.node_remove(self,)
         
-    def fill_stats(self,reroute,not_pos,avg_a,avg_b,start_rem,dest_rem,journey_rem,inter_node_rem):
+    def fill_stats(self,reroute,not_pos,avg_a,avg_b,avg_time_b,avg_time_a,start_rem,dest_rem,journey_rem,inter_node_rem):
         """Populates the stats dict with the required information."""
         self.stats['reroute']['num'] = reroute
         self.stats['not_pos']['num'] = not_pos
         self.stats['avg_a']['num'] = avg_a
         self.stats['avg_b']['num'] = avg_b
+        self.stats['avg_time_a']['num'] = avg_time_a
+        self.stats['avg_time_b']['num'] = avg_time_b
         self.stats['start_rem']['num'] = start_rem
         self.stats['dest_rem']['num'] = dest_rem
         self.stats['inter_node_rem']['num'] = inter_node_rem
@@ -293,30 +300,32 @@ class NclNetwork:
         self.time = None
         self.tick_rate  = None
     
-    def add_flow_point(self, start, end, start_time):
+    def add_flow_point(self, start, end, start_time, WEIGHT):
         """Adds a new flow point the list."""
-        route = self.create_waypoints(start,end)
+        route = self.create_waypoints(start,end, WEIGHT)
         if route <> False:
             self.flow_points.append(FlowPoint(self,route,start_time))
             return True
         else:
             return False 
     
-    def _shortest_path(self, start, end):
+    def _shortest_path(self, start, end, WEIGHT):
         """Finds the shortest path for a flow point and creates a set of 
         waypoints given this path."""
         source = start._truncated_geom
-        target = end._truncated_geom        
-        route = nx.shortest_path(self.graph, source, target)
+        target = end._truncated_geom
+        #print self.graph.edge[436390, 567040][436350, 567210]
+        #exit()
+        route = nx.shortest_path(self.graph, source, target, WEIGHT)
         waypoints =[]
         for j in range(len(route)-1):
             waypoints.append(self.__edges_class[(route[j],route[j+1])])
         return waypoints
     
-    def create_waypoints(self, start, end):
+    def create_waypoints(self, start, end, WEIGHT='time'):
         """"This creates a set of waypoints for a person if a route is possible"""
         try:
-            new_route = self._shortest_path(start,end)
+            new_route = self._shortest_path(start, end, WEIGHT)
         except nx.NetworkXNoPath:
             #no route possible
             new_route = False
@@ -335,6 +344,7 @@ class NclNetwork:
         self.graph.remove_edge(start._truncated_geom,end._truncated_geom)
         v = 0
         avg_b = self.average_journey_length()
+        avg_time_b = self.average_journey_length(length=False)
         reroute,noroute=0,0
         while v < len(self.flow_points):
             #if the people have not started traveling yet
@@ -396,8 +406,9 @@ class NclNetwork:
             v += 1
         #calculatre the average journey length
         avg_a = self.average_journey_length()
+        avg_time_a = self.average_journey_length(length=False)
         #print stats on the affect of the edge failure
-        edgefail.fill_stats(reroute,noroute,avg_b,avg_a)
+        edgefail.fill_stats(reroute,noroute,avg_b,avg_a,avg_time_b,avg_time_a)
         
     def node_remove(self,node_fail):
         """Updates for all people their waypoints given the removal of a junction"""
@@ -408,6 +419,7 @@ class NclNetwork:
         except nx.NetworkXError:
             print 'Could not remove node with geom ', node_to_remove, ' as if could not be found in the network'
         avg_b = self.average_journey_length()
+        avg_time_b = self.average_journey_length(length=False)
         v = 0
         reroute,noroute,start_rem,dest_rem,journey_rem,inter_node_rem = 0, 0, 0, 0, 0, 0
         #loop through all people
@@ -564,8 +576,10 @@ class NclNetwork:
             v += 1
         #calcaulate the average journey length
         avg_a = self.average_journey_length()
+        avg_time_a = self.average_journey_length(length=False)
+
         #print the stats on the effect of the ndoe being removed
-        node_fail.fill_stats(reroute,noroute,avg_a,avg_b,start_rem,dest_rem,journey_rem,inter_node_rem)
+        node_fail.fill_stats(reroute,noroute,avg_a,avg_b,avg_time_b,avg_time_a,start_rem,dest_rem,journey_rem,inter_node_rem)
 
     def nearest_node(self,node):
         """Returns the nearest junction in the network to the one removed."""
@@ -582,7 +596,7 @@ class NclNetwork:
         dists.sort()
         return node_dist[dists[0]]
         
-    def average_journey_length(self,active=False):
+    def average_journey_length(self,active=False,length=True):
         """Calculates the average length of journeys."""
         peeps_avg = []
         #go through all flow points (people)
@@ -594,7 +608,10 @@ class NclNetwork:
             #loop through the waypoints to calc the average
             for edge in peeps.waypoints:
                 #sum the dist between waypoints
-                peep_total += edge.length
+                if length==True:
+                    peep_total += edge.length
+                else:
+                    peep_total += edge.time
             peeps_avg.append(peep_total)
         if len(peeps_avg) == 0:
             #if no flow points have routes

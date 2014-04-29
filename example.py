@@ -7,17 +7,16 @@ from ncl_network_sim import tools
 """
 Current issues:
 Major:
--Neils hardcoded the use of the speed attribute for the visualisation. Need to 
-look at turning this into a variable.
--Neils alterations mean speed is used for the visualisation only, not for the 
-routing(ie. time to traverse an edge) for the creation if the flowpoint.
-
+-WEIGHT varaible used for the inital creation of the flow points, though not 
+when they fail at the moment (uses a default which is set as time). Needs to be
+sorted so is varaible, i.e. can be set to cost.
 
 Other:
 
 To do/ideas:
 -Do we want to check for a pre-exisitng length field?
--In dense networks, changing colours of edges might be better than line thickness
+-In dense networks, changing colours of edges might be better than line 
+thickness.
 
 """
 
@@ -73,7 +72,7 @@ SECONDS_PER_FRAME = 30 #set what the frame interval equals in realtime
 #simulation variables
 NUMBER_OF_PEOPLE = 1000
 HOURS_TO_RUN_FOR = 1 #time which start times are spread over
-
+WEIGHT = 'time'
 FLOW_COUNT_TIME = [0,10]#HOURS,MINUTES
 
 RECORD = False
@@ -88,20 +87,20 @@ for i in range(NUMBER_OF_PEOPLE):
     end = junctions[1]
     secs = random.randint(0,HOURS_TO_RUN_FOR*3600)
     person_start_time  = STARTTIME + datetime.timedelta(0,secs)
-    done = built_network.add_flow_point(start,end,person_start_time)
+    done = built_network.add_flow_point(start,end,person_start_time,WEIGHT)
     if done == False:
         routes_not_pos += 1
 
 print "number of people who's route is not possible:", routes_not_pos 
 
 #Variables to tailor failure analysis
-MANUAL = True #define times our have them generated
-RANDOM_TIME = False #if want to create times at random
+MANUAL = False #define times our have them generated
+RANDOM_TIME = True #if want to create times at random
 TIME_INTERVALS = None #set an interval(mins) between failures.
-NUMBER_OF_FAILURES = 1 #the number of failures which are to occur. 
+NUMBER_OF_FAILURES = 10 #the number of failures which are to occur. 
 
-TARGETED = True #if selecting nodes by their flow value - will also add degree - may be able to get rid of this
-NODE_EDGE_RANDOM = 'EDGE' #should be NODE,EDGE or NODE_EDGE
+TARGETED = False #if selecting nodes by their flow value - will also add degree - may be able to get rid of this
+NODE_EDGE_RANDOM = 'EDGE_NODE' #should be NODE,EDGE or NODE_EDGE
 FLOW = True #removes the node which the greatest number of flows have passed through in the last 10mins for example
 DEGREE = False #does not yet work
 
