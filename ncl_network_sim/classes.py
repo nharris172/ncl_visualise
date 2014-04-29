@@ -58,10 +58,10 @@ class NodeFailure:
             'journey_rem':{'num':0,'print_str':"number of people who's start/dest ended up being the same:"},
         }
         
-    def fail(self):
+    def fail(self,):
         """Runs the failure of node."""
         self.node.failed = True
-        self.fail_attr.network.node_remove(self)
+        self.fail_attr.network.node_remove(self,)
         
     def fill_stats(self,reroute,not_pos,avg_a,avg_b,start_rem,dest_rem,journey_rem,inter_node_rem):
         """Populates the stats dict with the required information."""
@@ -192,8 +192,10 @@ class Edge:
         self.start_node = start_node 
         self.end_node = end_node
         self.geom = (self.start_node.geom,self.end_node.geom)
+           
         ax, ay = self.start_node.geom
         bx, by = self.end_node.geom
+            
         if 'length' in info.keys():
             self.length = info['length']
         else:
@@ -291,7 +293,7 @@ class NclNetwork:
         self.time = None
         self.tick_rate  = None
     
-    def add_flow_point(self,start,end,start_time):
+    def add_flow_point(self, start, end, start_time):
         """Adds a new flow point the list."""
         route = self.create_waypoints(start,end)
         if route <> False:
@@ -300,16 +302,18 @@ class NclNetwork:
         else:
             return False 
     
-    def _shortest_path(self,start,end):
+    def _shortest_path(self, start, end):
         """Finds the shortest path for a flow point and creates a set of 
         waypoints given this path."""
-        route = nx.shortest_path(self.graph,source=start._truncated_geom, target=end._truncated_geom,weight='time')
+        source = start._truncated_geom
+        target = end._truncated_geom        
+        route = nx.shortest_path(self.graph, source, target)
         waypoints =[]
         for j in range(len(route)-1):
             waypoints.append(self.__edges_class[(route[j],route[j+1])])
         return waypoints
     
-    def create_waypoints(self,start, end):
+    def create_waypoints(self, start, end):
         """"This creates a set of waypoints for a person if a route is possible"""
         try:
             new_route = self._shortest_path(start,end)
@@ -318,10 +322,8 @@ class NclNetwork:
             new_route = False
         except nx.NetworkXError:
             #in any other error - likley to be that it could not the node in the network - this is top of the list of bugs
-            print 'Could not find node in network. ORIGIN is: %s ; DEST is: %s'%(start,end)
+            print 'Could not find node in network. ORIGIN is: %s ; DEST is: %s'%(start.geom,end.geom)
             new_route = False
-            #exit the appliocation
-            #exit()
         return new_route
     
     def edge_remove(self,edgefail):
@@ -401,7 +403,10 @@ class NclNetwork:
         """Updates for all people their waypoints given the removal of a junction"""
         #remove a junction from the network    
         node_to_remove =node_fail.node._truncated_geom
-        self.graph.remove_node(node_to_remove)
+        try:
+            self.graph.remove_node(node_to_remove)
+        except nx.NetworkXError:
+            print 'Could not remove node with geom ', node_to_remove, ' as if could not be found in the network'
         avg_b = self.average_journey_length()
         v = 0
         reroute,noroute,start_rem,dest_rem,journey_rem,inter_node_rem = 0, 0, 0, 0, 0, 0
