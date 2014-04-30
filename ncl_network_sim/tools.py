@@ -90,30 +90,38 @@ def get_targted_comp(NODE_EDGE_RANDOM, failure_times,FLOW_COUNT_TIME,built_netwo
                                 max_flow = num_flows
                                 edge_to_fail = edge
                     built_network.Failures.add_edge_fail(edge_to_fail,ftime)
-    elif FLOW == False and DEGREE == True:
+    elif FLOW == False and DEGREE == True:        
         #check times for failures
         for ftime in failure_times:
             #if appropriate time
             if ftime >= built_network.time and ftime < built_network.time + datetime.timedelta(0,built_network.tick_rate):
+                print '----------------------------'
+                print 'Running node degree failure identification'
+                
+                node_degrees = built_network.graph.degree()
+                max_degree = max(node_degrees.values())
+                print 'Max degree is:',max_degree
+                nodes_w_max=[] #stores all nodes with a equal max degree
+                for node in node_degrees:
+                    if node_degrees[node] == max_degree:
+                        nodes_w_max.append(node)
+                
+                node_to_fail = None
+                while node_to_fail == None:
+                    #pick one of the nodes at random
+                    item = random.randint(0,len(nodes_w_max)-1)
+                    coord = list(nodes_w_max[item])
+                    #find the node instance so it can be removed
                     for node in built_network.nodes:
-                        print node
-                        print node.geom
-                        print node.geom[0]
-                        print '('+str(node.geom[0])+', '+str(node.geom[1])+')'
-                        node_e = '('+str(node.geom[0])+', '+str(node.geom[1])+')'
-                        print built_network.graph.degree([node_e])
-                        exit()
-                        
-                    node_degrees = built_network.graph.degree()
-                    built_network.nodes
-                    max_degree = max(node_degrees.values())
-                    nodes_w_max=[] #stores all nodes with a equal max degree
-                    for node in node_degrees:
-                        if node_degrees[node] == max_degree:
-                            nodes_w_max.append(node)
-                    
-                    node_to_fail = nodes_w_max[random.randint(0,len(nodes_w_max))]
-                    built_network.Failures.add_node_fail(node_to_fail,ftime)
+                        tcoord = truncate_geom(node.geom)
+                        if tcoord[0]==coord[0] and tcoord[1]==coord[1]:
+                            node_to_fail = node
+                            break
+                    #if node could not be found, remove from the list so not selected again
+                    if node_to_fail == None:
+                        nodes_w_max.pop(item)
+                #add failure intance
+                built_network.Failures.add_node_fail(node_to_fail,ftime)
     else:
         return
         

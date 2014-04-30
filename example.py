@@ -9,7 +9,7 @@ Current issues:
 Major:
 -WEIGHT varaible used for the inital creation of the flow points, though not 
 when they fail at the moment (uses a default which is set as time). Needs to be
-sorted so is varaible, i.e. can be set to cost.
+sorted so is varaible, i.e. can be set to cost for example.
 
 Other:
 
@@ -23,14 +23,16 @@ thickness.
 net_source_shpfile = True
 
 #attribute name in shapefile/datatable - set as None if they are not in the shapefile
-length_att = 'length' #None #default value
-speed_att = None #'speed' #None #default value
+length_att = 'length' #None
+#speed should be in meters per second, otherwise results may be miss-representative
+speed_att = 'speed' #None
 default_speed = 22
 
+
 if net_source_shpfile == True:
-    #built_network = ncl_network_sim.build_network("networks/tw_m_a_b_w_speeds_TEMPfixONLY.shp", speed_att = 'speed', default_speed=20.0)
-    #built_network = ncl_network_sim.build_network("networks/tyne_wear_motorways_a_roads_v2.shp", default_speed=30, length_att=length_att)
-    built_network = ncl_network_sim.build_network("networks/metro_geo_rail.shp", speed_att=speed_att, default_speed=default_speed, length_att=length_att)
+    built_network = ncl_network_sim.build_network("networks/tw_m_a_b_w_speeds_TEMPfixONLY.shp", speed_att=speed_att, default_speed=default_speed, length_att=length_att)
+    #built_network = ncl_network_sim.build_network("networks/tyne_wear_motorways_a_roads_v2.shp", speed_att=speed_att, default_speed=default_speed, length_att=length_att)
+    #built_network = ncl_network_sim.build_network("networks/metro_geo_rail.shp", speed_att=speed_att, default_speed=default_speed, length_att=length_att)
     #built_network = ncl_network_sim.build_network("networks/metro_geo_rail_w_shortcuts.shp", speed_att=speed_att, length_att=length_att)
 elif net_source_shpfile == False:
     host = 'localhost'; user = 'postgres'; port = '5433'
@@ -94,15 +96,15 @@ for i in range(NUMBER_OF_PEOPLE):
 print "number of people who's route is not possible:", routes_not_pos 
 
 #Variables to tailor failure analysis
-MANUAL = False #define times our have them generated
+MANUAL = True #define times our have them generated
 RANDOM_TIME = True #if want to create times at random
 TIME_INTERVALS = None #set an interval(mins) between failures.
 NUMBER_OF_FAILURES = 10 #the number of failures which are to occur. 
 
-TARGETED = False #if selecting nodes by their flow value - will also add degree - may be able to get rid of this
-NODE_EDGE_RANDOM = 'EDGE_NODE' #should be NODE,EDGE or NODE_EDGE
-FLOW = True #removes the node which the greatest number of flows have passed through in the last 10mins for example
-DEGREE = False #does not yet work
+TARGETED = True #if selecting nodes by their flow value - will also add degree - may be able to get rid of this
+NODE_EDGE_RANDOM = 'NODE' #should be NODE,EDGE or NODE_EDGE
+FLOW = False #removes the node which the greatest number of flows have passed through in the last 10mins for example
+DEGREE = True #does not yet work
 
 random.shuffle(net_edges)
 
@@ -128,7 +130,14 @@ elif MANUAL == True:
          
     elif TARGETED == True:
         FAILURE_TIMES = [
-        datetime.datetime(2014,2,2,7,30)
+        datetime.datetime(2014,2,2,7,05),
+        datetime.datetime(2014,2,2,7,10),
+        datetime.datetime(2014,2,2,7,12),
+        datetime.datetime(2014,2,2,7,14),
+        datetime.datetime(2014,2,2,7,18),
+        datetime.datetime(2014,2,2,7,20),
+        datetime.datetime(2014,2,2,7,23),
+        datetime.datetime(2014,2,2,7,26),
         ]
 
 built_network.time_config(STARTTIME,SECONDS_PER_FRAME)

@@ -314,8 +314,8 @@ class NclNetwork:
         waypoints given this path."""
         source = start._truncated_geom
         target = end._truncated_geom
-        #print self.graph.edge[436390, 567040][436350, 567210]
-        #exit()
+        #print self.graph.edge[self.graph.edges()[0][0]][self.graph.edges()[0][1]]
+        #weighted shortest path
         route = nx.shortest_path(self.graph, source, target, WEIGHT)
         waypoints =[]
         for j in range(len(route)-1):
@@ -325,6 +325,7 @@ class NclNetwork:
     def create_waypoints(self, start, end, WEIGHT='time'):
         """"This creates a set of waypoints for a person if a route is possible"""
         try:
+            #find shortest path
             new_route = self._shortest_path(start, end, WEIGHT)
         except nx.NetworkXNoPath:
             #no route possible
