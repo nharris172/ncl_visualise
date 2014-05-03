@@ -10,6 +10,8 @@ Major:
 -WEIGHT varaible used for the inital creation of the flow points, though not 
 when they fail at the moment (uses a default which is set as time). Needs to be
 sorted so is varaible, i.e. can be set to cost for example.
+-Would be good to be able to add the flow/degree value for a node/edge removed 
+in a targeted failure.
 
 Other:
 
@@ -28,11 +30,13 @@ length_att = 'length' #None
 speed_att = 'speed' #None
 default_speed = 22
 
+#shpfile_name = "tw_m_a_b_w_speeds_TEMPfixONLY"
+shpfile_name = "metro_geo_rail"
 
 if net_source_shpfile == True:
-    built_network = ncl_network_sim.build_network("networks/tw_m_a_b_w_speeds_TEMPfixONLY.shp", speed_att=speed_att, default_speed=default_speed, length_att=length_att)
+    #built_network = ncl_network_sim.build_network("networks/%s.shp" %(shpfile_name), speed_att=speed_att, default_speed=default_speed, length_att=length_att)
     #built_network = ncl_network_sim.build_network("networks/tyne_wear_motorways_a_roads_v2.shp", speed_att=speed_att, default_speed=default_speed, length_att=length_att)
-    #built_network = ncl_network_sim.build_network("networks/metro_geo_rail.shp", speed_att=speed_att, default_speed=default_speed, length_att=length_att)
+    built_network = ncl_network_sim.build_network("networks/%s.shp" %(shpfile_name), speed_att=speed_att, default_speed=default_speed, length_att=length_att)
     #built_network = ncl_network_sim.build_network("networks/metro_geo_rail_w_shortcuts.shp", speed_att=speed_att, length_att=length_att)
 elif net_source_shpfile == False:
     host = 'localhost'; user = 'postgres'; port = '5433'
@@ -77,7 +81,11 @@ HOURS_TO_RUN_FOR = 1 #time which start times are spread over
 WEIGHT = 'time'
 FLOW_COUNT_TIME = [0,10]#HOURS,MINUTES
 
-RECORD = False
+RECORD = True
+FILE_PATH = "C:\\Users\\Craig\\vis_temp\\temp_%s-%s-%s.jpg"
+if RECORD==True:META_FILE = open("C:\\Users\\Craig\\vis_temp\\metadata.txt","w")
+
+
 
 #this creates the random people
 people = []
@@ -94,6 +102,9 @@ for i in range(NUMBER_OF_PEOPLE):
         routes_not_pos += 1
 
 print "number of people who's route is not possible:", routes_not_pos 
+tools.write_metadata(META_FILE,net_source_shpfile,shpfile_name,length_att,
+                     speed_att,default_speed,STARTTIME,SECONDS_PER_FRAME,
+                     NUMBER_OF_PEOPLE,routes_not_pos,HOURS_TO_RUN_FOR,WEIGHT,FLOW_COUNT_TIME)
 
 #Variables to tailor failure analysis
 MANUAL = True #define times our have them generated
@@ -102,9 +113,9 @@ TIME_INTERVALS = None #set an interval(mins) between failures.
 NUMBER_OF_FAILURES = 10 #the number of failures which are to occur. 
 
 TARGETED = True #if selecting nodes by their flow value - will also add degree - may be able to get rid of this
-NODE_EDGE_RANDOM = 'NODE' #should be NODE,EDGE or NODE_EDGE
-FLOW = False #removes the node which the greatest number of flows have passed through in the last 10mins for example
-DEGREE = True #does not yet work
+NODE_EDGE_RANDOM = 'NODE_EDGE' #should be NODE,EDGE or NODE_EDGE
+FLOW = True #removes the node which the greatest number of flows have passed through in the last 10mins for example
+DEGREE = False #does not yet work
 
 random.shuffle(net_edges)
 
@@ -113,8 +124,10 @@ if MANUAL == False:
         tools.random_failures(TIME_INTERVALS,NUMBER_OF_FAILURES,STARTTIME,NODE_EDGE_RANDOM,built_network,junctions,net_edges)
     elif TARGETED == True: #random time(s), targeted removal
          FAILURE_TIMES = tools.targeted_times(RANDOM_TIME,TIME_INTERVALS,NUMBER_OF_FAILURES,STARTTIME,built_network)
-            
+    
+    
 elif MANUAL == True:
+    EDGE_FAILURE_TIME=None;NODE_FAILURE_TIME=None;FAILURE_TIMES=None
     if TARGETED == False:
         #manual time setting, random component selection
         #year, month, day, hour, minut
@@ -130,15 +143,19 @@ elif MANUAL == True:
          
     elif TARGETED == True:
         FAILURE_TIMES = [
-        datetime.datetime(2014,2,2,7,05),
-        datetime.datetime(2014,2,2,7,10),
-        datetime.datetime(2014,2,2,7,12),
+        #datetime.datetime(2014,2,2,7,05),
+        #datetime.datetime(2014,2,2,7,10),
         datetime.datetime(2014,2,2,7,14),
-        datetime.datetime(2014,2,2,7,18),
+        #datetime.datetime(2014,2,2,7,14),
+        #datetime.datetime(2014,2,2,7,18),
         datetime.datetime(2014,2,2,7,20),
-        datetime.datetime(2014,2,2,7,23),
-        datetime.datetime(2014,2,2,7,26),
+        datetime.datetime(2014,2,2,7,40),
+        datetime.datetime(2014,2,2,7,29),
         ]
+        
+tools.write_failure_data(META_FILE,MANUAL,RANDOM_TIME,TIME_INTERVALS,NUMBER_OF_FAILURES,TARGETED,
+                             NODE_EDGE_RANDOM,FLOW,DEGREE,FAILURE_TIMES,EDGE_FAILURE_TIME,NODE_FAILURE_TIME)
+
 
 built_network.time_config(STARTTIME,SECONDS_PER_FRAME)
 quit = False
@@ -171,7 +188,8 @@ while not done and not quit:
         #print stats following the failure
         print '----------------------------'
         failure.print_stats()
-
+        failure.write_stats(META_FILE)
+ 
     quit = canvas.check_quit()
                 
     #draw static objects
@@ -216,8 +234,10 @@ while not done and not quit:
     #increase time by frame rate
     canvas.tick()
     if RECORD:
-        canvas.record("C:\\Users\\Craig\\vis_temp\\temp_%s-%s-%s.jpg", built_network.time.time())
+        canvas.record(FILE_PATH, built_network.time.time())
+        #write out meta file here
        
+META_FILE.close()
 # Be IDLE friendly. If you forget this line, the program will 'hang'
 # on exit.
 canvas.finish()

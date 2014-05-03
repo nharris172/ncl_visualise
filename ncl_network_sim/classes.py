@@ -40,6 +40,16 @@ class EdgeFailure:
         """Prints the stats as in the stats dict."""
         for key,val in self.stats.iteritems():
             print val['print_str'],val['num']
+    
+    def write_stats(self,FILE):
+        """Write stats on the failure to the metadata file."""
+        FILE.write("Edge Failure\n")
+        FILE.write("Time of failure: %s\n"%(self.time))
+        FILE.write("Edge removed: %s\n"%(str(self.edge.geom)))
+        FILE.write("Stats relating to the failure:\n")
+        for key, val in self.stats.iteritems():
+            FILE.write(val['print_str']+" "+str(val['num'])+"\n")
+        FILE.write("------------------------------\n")
             
 
 class NodeFailure:
@@ -85,6 +95,16 @@ class NodeFailure:
         """Prints the stats has in the stats dict."""
         for key,val in self.stats.iteritems():
             print val['print_str'],val['num']
+    
+    def write_stats(self,FILE):
+        """Write stats on the failure to the metadata file."""
+        FILE.write("Node Failure\n")
+        FILE.write("Time of failure: %s\n"%(self.time))
+        FILE.write("Node removed: %s\n"%(self.node.geom))
+        FILE.write("Stats relating to the failure:\n")
+        for key, val in self.stats.iteritems():
+            FILE.write(val['print_str']+" "+str(val['num'])+"\n")
+        FILE.write("------------------------------\n")
 
 class Failures:
     """Runs the failure of nodes/edges in the network."""

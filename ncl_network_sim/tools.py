@@ -125,4 +125,49 @@ def get_targted_comp(NODE_EDGE_RANDOM, failure_times,FLOW_COUNT_TIME,built_netwo
     else:
         return
         
+def write_metadata(META_FILE,net_source_shpfile,shpfile_name,length_att,speed_att,
+                   default_speed,STARTTIME,SECONDS_PER_FRAME,NUMBER_OF_PEOPLE,
+                   routes_not_pos,HOURS_TO_RUN_FOR,WEIGHT,FLOW_COUNT_TIME):
+    """"""
+    META_FILE.write("Metadata file file created\n")
+    META_FILE.write("Network origin: shapefile- %s\n" %(net_source_shpfile))
+    if net_source_shpfile == True:
+        META_FILE.write("Network shapefile: %s\n" %(shpfile_name))
+    META_FILE.write("Declared length attribute: %s\n" %(length_att))
+    META_FILE.write("Declared speed attribute: %s\n" %(speed_att))
+    META_FILE.write("Declared default speed: %s\n" %(default_speed))
+    META_FILE.write("------------------------------\n")
+    META_FILE.write("Simulation start time: %s\n" %(STARTTIME))
+    META_FILE.write("Number of seconds per frame: %s\n" %(SECONDS_PER_FRAME))
+    META_FILE.write("Number of flow points generated: %s\n" %(NUMBER_OF_PEOPLE))
+    META_FILE.write("Number of flows which there journey cannot be completed: %s\n" %(routes_not_pos))
+    META_FILE.write("Length of time flows start over: %s\n" %(HOURS_TO_RUN_FOR))
+    META_FILE.write("Weight assinged for shortest path assignment: %s\n" %(WEIGHT))
+    META_FILE.write("Time frame which flows are counted over for nodes and edges(hours,minutes): %s\n" %(FLOW_COUNT_TIME))
+    META_FILE.write("------------------------------\n")
+    return
+    
+def write_failure_data(META_FILE,MANUAL,RANDOM_TIME,TIME_INTERVALS,NUMBER_OF_FAILURES,TARGETED,
+                             NODE_EDGE_RANDOM,FLOW,DEGREE,FAILURE_TIMES,EDGE_FAILURE_TIME,NODE_FAILURE_TIME):
+    """"""
+    META_FILE.write("Failure created\n")    
+    META_FILE.write("Failure parameters:\n")
+    META_FILE.write("Manualy set times: %s\n"%(MANUAL))    
+    META_FILE.write("Failurs use a targted appraoch: %s\n"%(TARGETED))
+    if TARGETED == True:
+        META_FILE.write("\tFlow set as: %s\n"%(FLOW))
+        META_FILE.write("\tDegree set as: %s\n"%(DEGREE))
+    META_FILE.write("Components to remove: %s\n"%(NODE_EDGE_RANDOM))    
+    if MANUAL == False:
+        META_FILE.write("Number of failures to take place: %s\n"%(NUMBER_OF_FAILURES))
+        META_FILE.write("Random set as: %s\n"%(RANDOM_TIME))
+        META_FILE.write("Time intervals set as: %s\n"%(TIME_INTERVALS))
+    else:
+        if TARGETED == False:
+            META_FILE.write("Number of node failures: %s\n"%(len(NODE_FAILURE_TIME)))
+            META_FILE.write("Number of edge failures: %s\n"%(len(EDGE_FAILURE_TIME)))
+        else:        
+            META_FILE.write("Number of failures: %s\n"%(len(FAILURE_TIMES)))
+    META_FILE.write("------------------------------\n")
+    return
 
