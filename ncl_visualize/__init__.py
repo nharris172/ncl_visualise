@@ -33,8 +33,7 @@ class Canvas:
         pygame.init()
         #create pygame screen
         self.screen = pygame.display.set_mode(self.size)
-        self.clock = pygame.time.Clock()
-        
+        self.clock = pygame.time.Clock()        
         
     def set_background_color(self,bg_color):
         self.bg_color = bg_color

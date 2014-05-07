@@ -26,18 +26,16 @@ net_source_shpfile = True
 
 #attribute name in shapefile/datatable - set as None if they are not in the shapefile
 length_att = 'length' #None
-#speed should be in meters per second, otherwise results may be miss-representative
-speed_att = 'speed' #None
+speed_att = 'speed' #None #speed should be in meters per second, otherwise results may be miss-representative
 default_speed = 22
 
 #shpfile_name = "tw_m_a_b_w_speeds_TEMPfixONLY"
 shpfile_name = "metro_geo_rail"
+#shpfile_name = "leeds_motorways_a_b_roads_3"
+#shpfile_name = "uk_internal_routes"
 
 if net_source_shpfile == True:
-    #built_network = ncl_network_sim.build_network("networks/%s.shp" %(shpfile_name), speed_att=speed_att, default_speed=default_speed, length_att=length_att)
-    #built_network = ncl_network_sim.build_network("networks/tyne_wear_motorways_a_roads_v2.shp", speed_att=speed_att, default_speed=default_speed, length_att=length_att)
     built_network = ncl_network_sim.build_network("networks/%s.shp" %(shpfile_name), speed_att=speed_att, default_speed=default_speed, length_att=length_att)
-    #built_network = ncl_network_sim.build_network("networks/metro_geo_rail_w_shortcuts.shp", speed_att=speed_att, length_att=length_att)
 elif net_source_shpfile == False:
     host = 'localhost'; user = 'postgres'; port = '5433'
     password = 'aaSD2011'
@@ -47,7 +45,7 @@ elif net_source_shpfile == False:
     conn = "PG: host='%s' dbname='%s' user='%s' password='%s' port='%s'" % (host, dbname, user, password, port)
     built_network = ncl_network_sim.build_net_from_db(conn, net_name,speed_att=speed_att,default_speed=default_speed, length_att=length_att)
 
-
+#------------------------------------------------------------------------------
 junctions = built_network.nodes
 net_edges = built_network.edges
 
@@ -59,18 +57,25 @@ WINDOWWIDTH = 800
 canvas = ncl_visualize.Canvas((LEFT-buffer_width,TOP+buffer_height),(RIGHT+buffer_width,BOTTOM-buffer_height) ,WINDOWWIDTH)
 canvas.set_background_color((0,0,255))
 
+#------------------------------------------------------------------------------
 #Reads in shapefile for land, and converts them to screen coordinates
 #canvas.LoadStatic.Polygon("static_shps/land.shp",color=(0,0,0))
 canvas.LoadStatic.Polygon("static_shps/land_tw2.shp",color=(0,0,0))
+#canvas.LoadStatic.Polygon("static_shps/leeds_background.shp",color=(0,0,0))
+#canvas.LoadStatic.Polygon("static_shps/greatbritain",color=(0,0,0))
+
 
 #Reads in shapefile for river, and converts them to screen coordinates
 canvas.LoadStatic.Polygon("static_shps/river_buffer.shp",color=(0,0,255))
-       
+#canvas.LoadStatic.Polygon("static_shps/leeds_river_buffer.shp",color=(0,0,255))
+   
 #Reads in shapefile for buildings, and converts them to screen coordinates
-canvas.LoadStatic.Polygon("static_shps/buildings.shp",color=(92,92,92))
-#canvas.LoadStatic.Polygon("static_shps/buildings_tw2.shp",color=(92,92,92))
+#canvas.LoadStatic.Polygon("static_shps/buildings.shp",color=(92,92,92))
+canvas.LoadStatic.Polygon("static_shps/TyneWear_roads_buildings.shp",color=(92,92,92))
 #canvas.LoadStatic.Polygon("static_shps/tw_urban_areas.shp",color=(92,92,92))
-
+#canvas.LoadStatic.Polygon("static_shps/Leeds_roads_buildings.shp",color=(92,92,92))
+#canvas.LoadStatic.Polygon("static_shps/greatbritain",color=(92,92,92))
+#------------------------------------------------------------------------------
 #year, month, day, hour
 STARTTIME = datetime.datetime(2014,2,2,7,00) #set start start to 7 this morning
 SECONDS_PER_FRAME = 30 #set what the frame interval equals in realtime 
@@ -81,11 +86,11 @@ HOURS_TO_RUN_FOR = 1 #time which start times are spread over
 WEIGHT = 'time'
 FLOW_COUNT_TIME = [0,10]#HOURS,MINUTES
 
-RECORD = True
-FILE_PATH = "C:\\Users\\Craig\\vis_temp\\temp_%s-%s-%s.jpg"
+RECORD = False
+FILE_PATH = "C:\\Users\\Craig\\network_vis_tool\\vis_sim\\temp_%s-%s-%s.jpg"
 if RECORD==True:META_FILE = open("C:\\Users\\Craig\\vis_temp\\metadata.txt","w")
 
-
+#------------------------------------------------------------------------------
 
 #this creates the random people
 people = []
@@ -102,10 +107,11 @@ for i in range(NUMBER_OF_PEOPLE):
         routes_not_pos += 1
 
 print "number of people who's route is not possible:", routes_not_pos 
-tools.write_metadata(META_FILE,net_source_shpfile,shpfile_name,length_att,
+if RECORD: tools.write_metadata(META_FILE,net_source_shpfile,shpfile_name,length_att,
                      speed_att,default_speed,STARTTIME,SECONDS_PER_FRAME,
                      NUMBER_OF_PEOPLE,routes_not_pos,HOURS_TO_RUN_FOR,WEIGHT,FLOW_COUNT_TIME)
 
+#------------------------------------------------------------------------------
 #Variables to tailor failure analysis
 MANUAL = True #define times our have them generated
 RANDOM_TIME = True #if want to create times at random
@@ -116,6 +122,9 @@ TARGETED = True #if selecting nodes by their flow value - will also add degree -
 NODE_EDGE_RANDOM = 'NODE_EDGE' #should be NODE,EDGE or NODE_EDGE
 FLOW = True #removes the node which the greatest number of flows have passed through in the last 10mins for example
 DEGREE = False #does not yet work
+
+#------------------------------------------------------------------------------
+
 
 random.shuffle(net_edges)
 
@@ -145,18 +154,18 @@ elif MANUAL == True:
         FAILURE_TIMES = [
         #datetime.datetime(2014,2,2,7,05),
         #datetime.datetime(2014,2,2,7,10),
-        datetime.datetime(2014,2,2,7,14),
+        #datetime.datetime(2014,2,2,7,14),
         #datetime.datetime(2014,2,2,7,14),
         #datetime.datetime(2014,2,2,7,18),
         datetime.datetime(2014,2,2,7,20),
-        datetime.datetime(2014,2,2,7,40),
+        #datetime.datetime(2014,2,2,7,40),
         datetime.datetime(2014,2,2,7,29),
         ]
-        
-tools.write_failure_data(META_FILE,MANUAL,RANDOM_TIME,TIME_INTERVALS,NUMBER_OF_FAILURES,TARGETED,
+    
+if RECORD: tools.write_failure_data(META_FILE,MANUAL,RANDOM_TIME,TIME_INTERVALS,NUMBER_OF_FAILURES,TARGETED,
                              NODE_EDGE_RANDOM,FLOW,DEGREE,FAILURE_TIMES,EDGE_FAILURE_TIME,NODE_FAILURE_TIME)
 
-
+#------------------------------------------------------------------------------
 built_network.time_config(STARTTIME,SECONDS_PER_FRAME)
 quit = False
 done = False
@@ -188,7 +197,7 @@ while not done and not quit:
         #print stats following the failure
         print '----------------------------'
         failure.print_stats()
-        failure.write_stats(META_FILE)
+        if RECORD: failure.write_stats(META_FILE)
  
     quit = canvas.check_quit()
                 
@@ -237,7 +246,7 @@ while not done and not quit:
         canvas.record(FILE_PATH, built_network.time.time())
         #write out meta file here
        
-META_FILE.close()
+if RECORD: META_FILE.close()
 # Be IDLE friendly. If you forget this line, the program will 'hang'
 # on exit.
 canvas.finish()
