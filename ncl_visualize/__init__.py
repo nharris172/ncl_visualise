@@ -73,9 +73,15 @@ class Canvas:
             if event.type == pygame.QUIT: # If user clicked close
                 return True # Flag that we are done so we exit this loop
             
-    def record(self,filename,time):
+    def record(self,filename,time,k):
         time = str(time)
-        filename = filename %(time[0:2],time[3:5],time[7:9])
+        #print time[0:2],time[3:5],time[7:10]
+        #print time[0:2]
+        #print time[3:5]
+        #print time[6:8]
+        #filename = filename %(time[0:2],time[3:5],time[6:8])
+        filename = filename %(k)
+        print filename
         pygame.image.save(self.screen, filename)
             
     def tick(self,):

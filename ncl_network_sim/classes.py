@@ -125,10 +125,14 @@ class Failures:
     def check_fails(self,):
         """Checks the failures in the list to see if any need to be run at the 
         current time."""
+        fails = []
         for f in self.failures:
             if f.time >= self.network.time and f.time < self.network.time + datetime.timedelta(0,self.network.tick_rate):
-                f.fail()
-                return f
+                print "FOUND A FAILURE"
+                f.fail()#this is where the re-routing is done - goes to node failure class then network class
+                print "F is:",f
+                fails.append(f)
+        return fails
 
 class FlowPoint:
     """Handles the management of the  flowpoints and thier movement throught 
@@ -336,7 +340,9 @@ class NclNetwork:
         target = end._truncated_geom
         #print self.graph.edge[self.graph.edges()[0][0]][self.graph.edges()[0][1]]
         #weighted shortest path
+        #print "looking for route - origin = %s, dest = %s" %(source,target)
         route = nx.shortest_path(self.graph, source, target, WEIGHT)
+        
         waypoints =[]
         for j in range(len(route)-1):
             waypoints.append(self.__edges_class[(route[j],route[j+1])])
@@ -433,12 +439,15 @@ class NclNetwork:
         
     def node_remove(self,node_fail):
         """Updates for all people their waypoints given the removal of a junction"""
+        print 'NODE REMOVED----------------------'
         #remove a junction from the network    
         node_to_remove =node_fail.node._truncated_geom
         try:
             self.graph.remove_node(node_to_remove)
         except nx.NetworkXError:
+            print '--------------!!!!!!!!!!!----------------------------------'
             print 'Could not remove node with geom ', node_to_remove, ' as if could not be found in the network'
+            print '--------------!!!!!!!!!!!----------------------------------'
         avg_b = self.average_journey_length()
         avg_time_b = self.average_journey_length(length=False)
         v = 0
@@ -601,7 +610,7 @@ class NclNetwork:
 
         #print the stats on the effect of the ndoe being removed
         node_fail.fill_stats(reroute,noroute,avg_a,avg_b,avg_time_b,avg_time_a,start_rem,dest_rem,journey_rem,inter_node_rem)
-
+        print 'RE-ROUTING FINISHED---------------------'
     def nearest_node(self,node):
         """Returns the nearest junction in the network to the one removed."""
         node_dist = {}

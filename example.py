@@ -27,12 +27,13 @@ net_source_shpfile = True
 #attribute name in shapefile/datatable - set as None if they are not in the shapefile
 length_att = 'length' #None
 speed_att = 'speed' #None #speed should be in meters per second, otherwise results may be miss-representative
-default_speed = 22
+default_speed = 42
 
-#shpfile_name = "tw_m_a_b_w_speeds_TEMPfixONLY"
-shpfile_name = "metro_geo_rail"
-#shpfile_name = "leeds_motorways_a_b_roads_3"
+shpfile_name = "tw_m_a_b_w_speeds_TEMPfixONLY"
+#shpfile_name = "metro_geo_rail"
+#shpfile_name = "leeds_m_a_b_w_travel_time"
 #shpfile_name = "uk_internal_routes"
+#shpfile_name = "london_dlr_lines"
 
 if net_source_shpfile == True:
     built_network = ncl_network_sim.build_network("networks/%s.shp" %(shpfile_name), speed_att=speed_att, default_speed=default_speed, length_att=length_att)
@@ -63,18 +64,24 @@ canvas.set_background_color((0,0,255))
 canvas.LoadStatic.Polygon("static_shps/land_tw2.shp",color=(0,0,0))
 #canvas.LoadStatic.Polygon("static_shps/leeds_background.shp",color=(0,0,0))
 #canvas.LoadStatic.Polygon("static_shps/greatbritain",color=(0,0,0))
-
+#canvas.LoadStatic.Polygon("static_shps/london_background.shp",color=(0,0,0))
 
 #Reads in shapefile for river, and converts them to screen coordinates
 canvas.LoadStatic.Polygon("static_shps/river_buffer.shp",color=(0,0,255))
 #canvas.LoadStatic.Polygon("static_shps/leeds_river_buffer.shp",color=(0,0,255))
-   
+#canvas.LoadStatic.Polygon("static_shps/london_rivers.shp",color=(0,0,255)) 
+
 #Reads in shapefile for buildings, and converts them to screen coordinates
 #canvas.LoadStatic.Polygon("static_shps/buildings.shp",color=(92,92,92))
 canvas.LoadStatic.Polygon("static_shps/TyneWear_roads_buildings.shp",color=(92,92,92))
 #canvas.LoadStatic.Polygon("static_shps/tw_urban_areas.shp",color=(92,92,92))
 #canvas.LoadStatic.Polygon("static_shps/Leeds_roads_buildings.shp",color=(92,92,92))
 #canvas.LoadStatic.Polygon("static_shps/greatbritain",color=(92,92,92))
+#canvas.LoadStatic.Polygon("static_shps/london_dlr_buildings.shp",color=(92,92,92))
+
+#SHP_FILE = "C:\\Users\\Craig\\Dropbox\\polygon_multiple_failures_testing.shp"
+#canvas.LoadStatic.Polygon(SHP_FILE,color=(92,92,92))
+
 #------------------------------------------------------------------------------
 #year, month, day, hour
 STARTTIME = datetime.datetime(2014,2,2,7,00) #set start start to 7 this morning
@@ -86,9 +93,10 @@ HOURS_TO_RUN_FOR = 1 #time which start times are spread over
 WEIGHT = 'time'
 FLOW_COUNT_TIME = [0,10]#HOURS,MINUTES
 
-RECORD = False
-FILE_PATH = "C:\\Users\\Craig\\network_vis_tool\\vis_sim\\temp_%s-%s-%s.jpg"
-if RECORD==True:META_FILE = open("C:\\Users\\Craig\\vis_temp\\metadata.txt","w")
+RECORD = True
+#FILE_PATH = "C:\\Users\\Craig\\network_vis_tool\\vis_sim\\temp_%s-%s-%s.jpg"
+FILE_PATH = "C:\\Users\\Craig\\network_vis_tool\\vis_sim - TW\\temp%s.jpg"
+if RECORD==True:META_FILE = open("C:\\Users\\Craig\\network_vis_tool\\vis_sim - TW\\metadata.txt","w")
 
 #------------------------------------------------------------------------------
 
@@ -119,14 +127,18 @@ TIME_INTERVALS = None #set an interval(mins) between failures.
 NUMBER_OF_FAILURES = 10 #the number of failures which are to occur. 
 
 TARGETED = True #if selecting nodes by their flow value - will also add degree - may be able to get rid of this
-NODE_EDGE_RANDOM = 'NODE_EDGE' #should be NODE,EDGE or NODE_EDGE
 FLOW = True #removes the node which the greatest number of flows have passed through in the last 10mins for example
 DEGREE = False #does not yet work
+NODE_EDGE_RANDOM = 'NODE' #should be NODE,EDGE or NODE_EDGE
+
+GEO_FAILURE = False
+SHP_FILE = "C:\\Users\\Craig\\Dropbox\\PiP\\polygon_multiple_failures_testing.shp"
 
 #------------------------------------------------------------------------------
 
 
 random.shuffle(net_edges)
+EDGE_FAILURE_TIME=None;NODE_FAILURE_TIME=None;FAILURE_TIMES=None
 
 if MANUAL == False:
     if TARGETED == False: #random time(s), random component selection
@@ -152,15 +164,22 @@ elif MANUAL == True:
          
     elif TARGETED == True:
         FAILURE_TIMES = [
-        #datetime.datetime(2014,2,2,7,05),
-        #datetime.datetime(2014,2,2,7,10),
+        #datetime.datetime(2014,2,2,7,5),
+        #datetime.datetime(2014,2,2,7,11),
         #datetime.datetime(2014,2,2,7,14),
-        #datetime.datetime(2014,2,2,7,14),
-        #datetime.datetime(2014,2,2,7,18),
-        datetime.datetime(2014,2,2,7,20),
-        #datetime.datetime(2014,2,2,7,40),
-        datetime.datetime(2014,2,2,7,29),
+        #datetime.datetime(2014,2,2,7,32),
+        datetime.datetime(2014,2,2,7,33),
+        datetime.datetime(2014,2,2,7,43),
+        #datetime.datetime(2014,2,2,7,49),
+        datetime.datetime(2014,2,2,7,53),
+        datetime.datetime(2014,2,2,7,28),
+        #datetime.datetime(2014,2,2,7,15),
         ]
+    
+if GEO_FAILURE == True:
+    GEO_F_TIME = [
+    datetime.datetime(2014,2,2,7,14)  
+    ]
     
 if RECORD: tools.write_failure_data(META_FILE,MANUAL,RANDOM_TIME,TIME_INTERVALS,NUMBER_OF_FAILURES,TARGETED,
                              NODE_EDGE_RANDOM,FLOW,DEGREE,FAILURE_TIMES,EDGE_FAILURE_TIME,NODE_FAILURE_TIME)
@@ -172,33 +191,38 @@ done = False
 k = 0
 canvas.start_screen()
 
-while not done and not quit:   
+while not done and not quit:
     
     #check if any tageted failures are due and create full instance if so
     if TARGETED == True:
         tools.get_targted_comp(NODE_EDGE_RANDOM, FAILURE_TIMES,FLOW_COUNT_TIME,built_network,FLOW,DEGREE)
+
+    #check for geo failure
+    if GEO_FAILURE == True:
+        tools.geo_failure_comp(NODE_EDGE_RANDOM, FAILURE_TIMES,FLOW_COUNT_TIME,built_network,FLOW,DEGREE,SHP_FILE,GEO_F_TIME)
     
-    #check if any failures are due
-    failure = built_network.Failures.check_fails()
+    #check if any failures are due and reroute flows
+    fails = built_network.Failures.check_fails()
     
     #if there is a failure
-    if failure:
-        if failure.edge:
-            for i in range(1,50):
-                #Terprint failure.statsrible failure animation
-                canvas.draw_line(failure.edge.geom,(255,100,0),i)
-                canvas.tick()
-        if failure.node:
-            for i in range(1,20):
-                #Terprint failure.statsrible failure animation
-                canvas.draw_point(failure.node.geom,(255,0,0),i)
-                canvas.tick()
-                
-        #print stats following the failure
-        print '----------------------------'
-        failure.print_stats()
-        if RECORD: failure.write_stats(META_FILE)
- 
+    for failure in fails:
+        if failure:
+            if failure.edge:
+                for i in range(1,50):
+                    #Terprint failure.statsrible failure animation
+                    canvas.draw_line(failure.edge.geom,(255,100,0),i)
+                    canvas.tick()
+            if failure.node:
+                for i in range(1,20):
+                    #Terprint failure.statsrible failure animation
+                    canvas.draw_point(failure.node.geom,(255,0,0),i)
+                    canvas.tick()
+                    
+            #print stats following the failure
+            print '----------------------------'
+            failure.print_stats()
+            if RECORD: failure.write_stats(META_FILE)
+
     quit = canvas.check_quit()
                 
     #draw static objects
@@ -242,10 +266,12 @@ while not done and not quit:
 
     #increase time by frame rate
     canvas.tick()
+    print built_network.time.time()
+    
     if RECORD:
-        canvas.record(FILE_PATH, built_network.time.time())
+        canvas.record(FILE_PATH, built_network.time.time(),k)
         #write out meta file here
-       
+    k+=1
 if RECORD: META_FILE.close()
 # Be IDLE friendly. If you forget this line, the program will 'hang'
 # on exit.

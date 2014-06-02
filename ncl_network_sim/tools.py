@@ -171,3 +171,58 @@ def write_failure_data(META_FILE,MANUAL,RANDOM_TIME,TIME_INTERVALS,NUMBER_OF_FAI
     META_FILE.write("------------------------------\n")
     return
 
+def point_in_poly(coord,poly):
+    x,y = coord
+    n = len(poly)
+    inside = False
+
+    p1x,p1y = poly[0]
+    for i in range(n+1):
+        p2x,p2y = poly[i % n]
+        if y > min(p1y,p2y):
+            if y <= max(p1y,p2y):
+                if x <= max(p1x,p2x):
+                    if p1y != p2y:
+                        xints = (y-p1y)*(p2x-p1x)/(p2y-p1y)+p1x
+                    if p1x == p2x or x <= xints:
+                        inside = not inside
+        p1x,p1y = p2x,p2y
+
+    return inside
+
+def geo_failure(shp_file, G):
+    import shapefile
+    polygons = []
+    sf = shapefile.Reader(shp_file)
+    shapes = sf.shapes()
+    for shape in shapes:
+        coords = []
+        for p in  shape.points:
+            coords.append(p)
+        polygons.append(coords)
+
+    polygon = coords
+    nodes_inside = []
+    number_inside = 0
+    #extract list of coords
+    for polygon in polygons:
+        for nd in G.nodes:
+            coords = nd.geom
+            x,y = coords[0],coords[1]
+            coord = float(x),float(y)
+            inside = point_in_poly(coord,polygon)
+            if inside == True:
+                nodes_inside.append(nd)
+                number_inside += 1
+    return G, number_inside,nodes_inside
+    
+def geo_failure_comp(NODE_EDGE_RANDOM, FAILURE_TIMES,FLOW_COUNT_TIME,built_network,FLOW,DEGREE,SHP_FILE,GEO_F_TIME):
+    """"""
+    for ftime in GEO_F_TIME:
+        #if appropriate time
+        if ftime >= built_network.time and ftime < built_network.time + datetime.timedelta(0,built_network.tick_rate):
+            G,number_inside,nodes_inside = geo_failure(SHP_FILE,built_network)
+            for nd in nodes_inside:
+                #add node failure
+                built_network.Failures.add_node_fail(nd,ftime)
+    return
