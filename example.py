@@ -29,8 +29,8 @@ length_att = 'length' #None
 speed_att = 'speed' #None #speed should be in meters per second, otherwise results may be miss-representative
 default_speed = 42
 
-shpfile_name = "tw_m_a_b_w_speeds_TEMPfixONLY"
-#shpfile_name = "metro_geo_rail"
+#shpfile_name = "tw_m_a_b_w_speeds_TEMPfixONLY"
+shpfile_name = "metro_geo_rail"
 #shpfile_name = "leeds_m_a_b_w_travel_time"
 #shpfile_name = "uk_internal_routes"
 #shpfile_name = "london_dlr_lines"
@@ -93,10 +93,10 @@ HOURS_TO_RUN_FOR = 1 #time which start times are spread over
 WEIGHT = 'time'
 FLOW_COUNT_TIME = [0,10]#HOURS,MINUTES
 
-RECORD = True
+RECORD = False
 #FILE_PATH = "C:\\Users\\Craig\\network_vis_tool\\vis_sim\\temp_%s-%s-%s.jpg"
 FILE_PATH = "C:\\Users\\Craig\\network_vis_tool\\vis_sim - TW\\temp%s.jpg"
-if RECORD==True:META_FILE = open("C:\\Users\\Craig\\network_vis_tool\\vis_sim - TW\\metadata.txt","w")
+if RECORD == True: META_FILE = open("C:\\Users\\Craig\\network_vis_tool\\vis_sim - TW\\metadata.txt","w")
 
 #------------------------------------------------------------------------------
 
@@ -131,9 +131,12 @@ FLOW = True #removes the node which the greatest number of flows have passed thr
 DEGREE = False #does not yet work
 NODE_EDGE_RANDOM = 'NODE' #should be NODE,EDGE or NODE_EDGE
 
-GEO_FAILURE = False
-SHP_FILE = "C:\\Users\\Craig\\Dropbox\\PiP\\polygon_multiple_failures_testing.shp"
-
+GEO_FAILURE = True
+SHP_FILE = "C:\\Users\\Craig\\Dropbox\\vis_tool_data\\PiP\\polygon_multiple_failures_testing.shp"
+'''
+if GEO_FAILURE:
+    canvas.LoadStatic.Polygon("C:\\Users\\Craig\\Dropbox\\vis_tool_data\\PiP\\polygon_multiple_failures_testing.shp",color=(0,0,255))
+'''
 #------------------------------------------------------------------------------
 
 
@@ -168,17 +171,17 @@ elif MANUAL == True:
         #datetime.datetime(2014,2,2,7,11),
         #datetime.datetime(2014,2,2,7,14),
         #datetime.datetime(2014,2,2,7,32),
-        datetime.datetime(2014,2,2,7,33),
-        datetime.datetime(2014,2,2,7,43),
+        #datetime.datetime(2014,2,2,7,33),
+        #datetime.datetime(2014,2,2,7,43),
         #datetime.datetime(2014,2,2,7,49),
-        datetime.datetime(2014,2,2,7,53),
-        datetime.datetime(2014,2,2,7,28),
+        #datetime.datetime(2014,2,2,7,53),
+        #datetime.datetime(2014,2,2,7,28),
         #datetime.datetime(2014,2,2,7,15),
         ]
     
 if GEO_FAILURE == True:
     GEO_F_TIME = [
-    datetime.datetime(2014,2,2,7,14)  
+    datetime.datetime(2014,2,2,7,04)  
     ]
     
 if RECORD: tools.write_failure_data(META_FILE,MANUAL,RANDOM_TIME,TIME_INTERVALS,NUMBER_OF_FAILURES,TARGETED,
@@ -201,6 +204,10 @@ while not done and not quit:
     if GEO_FAILURE == True:
         tools.geo_failure_comp(NODE_EDGE_RANDOM, FAILURE_TIMES,FLOW_COUNT_TIME,built_network,FLOW,DEGREE,SHP_FILE,GEO_F_TIME)
     
+    for ftime in GEO_F_TIME:
+        if ftime == built_network.time:
+            canvas.LoadStatic.Polygon("C:\\Users\\Craig\\Dropbox\\vis_tool_data\\PiP\\polygon_multiple_failures_testing.shp",color=(0,0,255))
+ 
     #check if any failures are due and reroute flows
     fails = built_network.Failures.check_fails()
     
@@ -224,11 +231,10 @@ while not done and not quit:
             if RECORD: failure.write_stats(META_FILE)
 
     quit = canvas.check_quit()
-                
     #draw static objects
     canvas.fill_screen()
     canvas.draw_static()
-
+    
     done = built_network.tick()
     
     #draws the edges
@@ -266,11 +272,10 @@ while not done and not quit:
 
     #increase time by frame rate
     canvas.tick()
-    print built_network.time.time()
     
     if RECORD:
         canvas.record(FILE_PATH, built_network.time.time(),k)
-        #write out meta file here
+
     k+=1
 if RECORD: META_FILE.close()
 # Be IDLE friendly. If you forget this line, the program will 'hang'
