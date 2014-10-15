@@ -1,6 +1,5 @@
 import math
 import datetime
-from tools import truncate_geom as _truncate_geom
 import networkx as nx
 
 
@@ -9,6 +8,7 @@ class EdgeFailure:
     """Handles the failure of an edge and the associated outcomes."""
     def __init__(self,fail,_edge_class,_time):
         self.node = False
+        self.done = False
         self.fail_attr = fail
         self.edge = _edge_class
         self.time = _time
@@ -57,6 +57,7 @@ class NodeFailure:
     outcomes."""
     def __init__(self,fail,_node_class,_time):
         self.edge = False
+        self.done = False
         self.fail_attr = fail
         self.node = _node_class
         self.time = _time
@@ -127,9 +128,12 @@ class Failures:
         current time."""
         fails = []
         for f in self.failures:
-            if f.time >= self.network.time and f.time < self.network.time + datetime.timedelta(0,self.network.tick_rate):
+            if f.done:
+                continue
+            if f.time >= self.network.time and f.time < self.network.time + self.network.tick_rate:
                 #print "FOUND A FAILURE"
                 f.fail()#this is where the re-routing is done - goes to node failure class then network class
+                f.done= True
                 #print "F is:",f
                 fails.append(f)
         return fails
@@ -137,10 +141,11 @@ class Failures:
 class FlowPoint:
     """Handles the management of the  flowpoints and thier movement throught 
     the network during the simulation/visualisation."""
-    def __init__(self,network,waypoints,start_time):
+    def __init__(self,network,waypoints,start_time,speed = False):
         self.network = network
         self.waypoints = waypoints
         self.start_time = start_time
+        self.speed = speed
         self.point = 0
         self.loc = waypoints[0].start_node.geom
         self.finished = False
@@ -150,7 +155,10 @@ class FlowPoint:
     def move(self,time):
         """Moves the person the correct location. Updates the lists of nodes 
         and edges visited during the time step for the person as well."""
-        step = self.edge.speed * time
+        if not self.speed:
+            step = self.edge.speed * time
+        else:
+            step = self.speed * time
         ax, ay = self.loc
         bx, by = self.edge.end_node.geom
         dist = math.hypot(bx-ax, by-ay)
@@ -159,6 +167,7 @@ class FlowPoint:
             if self.point ==0:
                 if self.waypoints[self.point].start_node in self.network.nodes:
                     self.waypoints[self.point].start_node.add_flow(self.network.time)
+                    
             if self.waypoints[self.point].end_node in self.network.nodes:
                 self.waypoints[self.point].end_node.add_flow(self.network.time)
             self.waypoints[self.point].add_flow(self.network.time)
@@ -324,11 +333,19 @@ class NclNetwork:
         self.time = None
         self.tick_rate  = None
     
-    def add_flow_point(self, start, end, start_time, WEIGHT):
+    def add_flow_point(self, start, end, start_time, WEIGHT,end_time=False):
         """Adds a new flow point the list."""
         route = self.create_waypoints(start,end, WEIGHT)
         if route <> False:
-            self.flow_points.append(FlowPoint(self,route,start_time))
+            if end_time:
+                time = (end_time - start_time).total_seconds()
+                distance = 0
+                for edge in route:
+                    distance += edge.length
+                speed = distance/time
+            else:
+                speed=False
+            self.flow_points.append(FlowPoint(self,route,start_time,speed=speed))
             return True
         else:
             return False 
@@ -343,6 +360,7 @@ class NclNetwork:
         #print "looking for route - origin = %s, dest = %s" %(source,target)
         try:
             route = nx.shortest_path(self.graph, source, target, WEIGHT)
+
         except:            
             #print self.graph.nodes()
             #makes the error happen again so can see a print out
@@ -351,6 +369,9 @@ class NclNetwork:
         
         waypoints =[]
         for j in range(len(route)-1):
+            if self.__edges_class[(route[j],route[j+1])].start_node.failed or \
+            self.__edges_class[(route[j],route[j+1])].end_node.failed:
+                print 'route contains failure!'
             waypoints.append(self.__edges_class[(route[j],route[j+1])])
         return waypoints
     
@@ -374,6 +395,8 @@ class NclNetwork:
         #find the edge to remove
         start,end = edgefail.edge.start_node,edgefail.edge.end_node
         #remove the edge from the network
+        
+
         self.graph.remove_edge(start._truncated_geom,end._truncated_geom)
         v = 0
         avg_b = self.average_journey_length()
@@ -647,7 +670,7 @@ class NclNetwork:
                     #as its already started, not an error here
                     pass
                 else:
-                    #print "Start waypoint = failed node;", node_fail.node.geom,",Started:",self.flow_points[v].started
+                    print "Start waypoint = failed node;", node_fail.node.geom,",Started:",self.flow_points[v].started
                     self.flow_points.remove(self.flow_points[v])
                     errors_caught += 1
                     v -= 1
@@ -657,7 +680,7 @@ class NclNetwork:
                     #not a error as already finished
                     pass
                 else:
-                    #print "End waypoint = failed node;", node_fail.node.geom,",Started:",self.flow_points[v].started
+                    print "End waypoint = failed node;", node_fail.node.geom,",Started:",self.flow_points[v].started
                     self.flow_points.remove(self.flow_points[v])
                     errors_caught += 1
                     v -= 1
@@ -668,13 +691,13 @@ class NclNetwork:
                     if self.flow_points[v].started == True:
                         pass
                     else:
-                        #print "Inter origin waypoint = failed node;", node_fail.node.geom,",Started:",self.flow_points[v].started
+                        print "Inter origin waypoint = failed node;", node_fail.node.geom,",Started:",self.flow_points[v].started
                         self.flow_points.remove(self.flow_points[v])
                         errors_caught += 1
                         v -= 1
                     #exit()
                 elif dest == node_fail.node:
-                    #print "Inter dest waypoint = failed node;", node_fail.node.geom,",Started:",self.flow_points[v].started
+                    print "Inter dest waypoint = failed node;", node_fail.node.geom,",Started:",self.flow_points[v].started
                     self.flow_points.remove(self.flow_points[v])
                     errors_caught += 1
                     v -= 1
@@ -688,10 +711,10 @@ class NclNetwork:
         node_dist = {}
         dists = []
         #loop though all nodes
+        
         for near in self.nodes:
             #check the node is not the one removed, else calc the dist between them
             if near != node and not near.failed:
-                
                 dist = math.hypot(near.geom[0] - node.geom[0], near.geom[1] - node.geom[1]) 
                 dists.append(dist)
                 node_dist[dist] = near
@@ -751,8 +774,9 @@ class NclNetwork:
         return num
     
     def time_config(self,start_time, tick_rate):
-        self.time = start_time - datetime.timedelta(0,tick_rate)
-        self.tick_rate  = tick_rate
+        
+        self.tick_rate  = datetime.timedelta(seconds =tick_rate)
+        self.time = start_time - self.tick_rate
     
     def tick(self,):
         done = True
@@ -761,6 +785,6 @@ class NclNetwork:
                 done = False # if people are still moving don't finish
                 if self.time > peep.start_time:
                     peep.started = True
-                    peep.move(self.tick_rate)#move people 
-        self.time += datetime.timedelta(0,self.tick_rate)
+                    peep.move(self.tick_rate.total_seconds())#move people 
+        self.time += self.tick_rate
         return done

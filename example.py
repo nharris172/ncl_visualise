@@ -3,7 +3,7 @@ import ncl_network_sim
 import datetime 
 import random
 from ncl_network_sim import tools
-
+import os 
 """
 Current issues:
 Major:
@@ -34,9 +34,11 @@ shpfile_name = "metro_geo_rail"
 #shpfile_name = "leeds_m_a_b_w_travel_time"
 #shpfile_name = "uk_internal_routes"
 #shpfile_name = "london_dlr_lines"
-
+path =  os.path.dirname(os.path.realpath(__file__))
 if net_source_shpfile == True:
-    built_network = ncl_network_sim.build_network("networks/%s.shp" %(shpfile_name), speed_att=speed_att, default_speed=default_speed, length_att=length_att)
+    
+    print os.path.join(path,"networks","%s.shp" % shpfile_name) == '/home/neil/git_rep/ncl_visualise/networks/metro_geo_rail.shp'
+    built_network = ncl_network_sim.build_network(os.path.join(path,"networks","%s.shp" % shpfile_name) , speed_att=speed_att, default_speed=default_speed, length_att=length_att)
 elif net_source_shpfile == False:
     host = 'localhost'; user = 'postgres'; port = '5433'
     password = 'aaSD2011'
@@ -61,19 +63,19 @@ canvas.set_background_color((0,0,255))
 #------------------------------------------------------------------------------
 #Reads in shapefile for land, and converts them to screen coordinates
 #canvas.LoadStatic.Polygon("static_shps/land.shp",color=(0,0,0))
-canvas.LoadStatic.Polygon("static_shps/land_tw2.shp",color=(0,0,0))
+canvas.LoadStatic.Polygon(os.path.join(path,"static_shps","land.shp"),color=(0,0,0))
 #canvas.LoadStatic.Polygon("static_shps/leeds_background.shp",color=(0,0,0))
 #canvas.LoadStatic.Polygon("static_shps/greatbritain",color=(0,0,0))
 #canvas.LoadStatic.Polygon("static_shps/london_background.shp",color=(0,0,0))
 
 #Reads in shapefile for river, and converts them to screen coordinates
-canvas.LoadStatic.Polygon("static_shps/river_buffer.shp",color=(0,0,255))
+canvas.LoadStatic.Polygon(os.path.join(path,"static_shps","river_buffer.shp"),color=(0,0,255))
 #canvas.LoadStatic.Polygon("static_shps/leeds_river_buffer.shp",color=(0,0,255))
 #canvas.LoadStatic.Polygon("static_shps/london_rivers.shp",color=(0,0,255)) 
 
 #Reads in shapefile for buildings, and converts them to screen coordinates
 #canvas.LoadStatic.Polygon("static_shps/buildings.shp",color=(92,92,92))
-canvas.LoadStatic.Polygon("static_shps/TyneWear_roads_buildings.shp",color=(92,92,92))
+canvas.LoadStatic.Polygon(os.path.join(path,"static_shps","buildings.shp"),color=(92,92,92))
 #canvas.LoadStatic.Polygon("static_shps/tw_urban_areas.shp",color=(92,92,92))
 #canvas.LoadStatic.Polygon("static_shps/Leeds_roads_buildings.shp",color=(92,92,92))
 #canvas.LoadStatic.Polygon("static_shps/greatbritain",color=(92,92,92))
@@ -121,17 +123,17 @@ if RECORD: tools.write_metadata(META_FILE,net_source_shpfile,shpfile_name,length
 
 #------------------------------------------------------------------------------
 #Variables to tailor failure analysis
-MANUAL = True #define times our have them generated
+MANUAL = False #define times our have them generated
 RANDOM_TIME = True #if want to create times at random
-TIME_INTERVALS = None #set an interval(mins) between failures.
-NUMBER_OF_FAILURES = 10 #the number of failures which are to occur. 
+TIME_INTERVALS = 4 #set an interval(mins) between failures.
+NUMBER_OF_FAILURES = 3 #the number of failures which are to occur. 
 
-TARGETED = True #if selecting nodes by their flow value - will also add degree - may be able to get rid of this
+TARGETED = False #if selecting nodes by their flow value - will also add degree - may be able to get rid of this
 FLOW = True #removes the node which the greatest number of flows have passed through in the last 10mins for example
 DEGREE = False #does not yet work
 NODE_EDGE_RANDOM = 'NODE' #should be NODE,EDGE or NODE_EDGE
 
-GEO_FAILURE = True
+GEO_FAILURE = False
 SHP_FILE = "C:\\Users\\Craig\\Dropbox\\vis_tool_data\\PiP\\polygon_multiple_failures_testing.shp"
 '''
 if GEO_FAILURE:
@@ -178,7 +180,7 @@ elif MANUAL == True:
         #datetime.datetime(2014,2,2,7,28),
         #datetime.datetime(2014,2,2,7,15),
         ]
-    
+GEO_F_TIME = []
 if GEO_FAILURE == True:
     GEO_F_TIME = [
     datetime.datetime(2014,2,2,7,04)  

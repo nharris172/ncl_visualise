@@ -1,9 +1,15 @@
 import random
 import datetime
 
-def truncate_geom(p):
-    """Rounds the geometry to nearest 10 this is to ensure the network in topologically correct"""
-    return (int(10 * round(float(p[0])/10)),int(10 * round(float(p[1])/10)))
+
+def truncate_geom_funtion_maker(dp=1):
+
+    def truncate_geom_dp(p):
+        """Rounds the geometry to nearest 10 this is to ensure the network in topologically correct"""
+        return (round(float(p[0]),dp),round(float(p[1]),dp))
+    return truncate_geom_dp
+
+
 
 def manual_random_edges(EDGE_FAILURE_TIME,net_edges,built_network):
     """Creates a set of failures for edges randomly."""
