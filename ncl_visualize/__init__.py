@@ -75,13 +75,7 @@ class Canvas:
             
     def record(self,filename,time,k):
         time = str(time)
-        #print time[0:2],time[3:5],time[7:10]
-        #print time[0:2]
-        #print time[3:5]
-        #print time[6:8]
-        #filename = filename %(time[0:2],time[3:5],time[6:8])
         filename = filename %(k)
-        print filename
         pygame.image.save(self.screen, filename)
             
     def tick(self,):

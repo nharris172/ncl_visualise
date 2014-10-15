@@ -90,10 +90,15 @@ STARTTIME = datetime.datetime(2014,2,2,7,00) #set start start to 7 this morning
 SECONDS_PER_FRAME = 30 #set what the frame interval equals in realtime 
 
 #simulation variables
+FLOWS_FROM_CSV = True
 NUMBER_OF_PEOPLE = 1000
 HOURS_TO_RUN_FOR = 1 #time which start times are spread over
 WEIGHT = 'time'
 FLOW_COUNT_TIME = [0,10]#HOURS,MINUTES
+
+WEIGHT_FACTOR_N = 1035
+WEIGHT_FACTOR_E = 35
+SHOW_NODES = False
 
 RECORD = False
 #FILE_PATH = "C:\\Users\\Craig\\network_vis_tool\\vis_sim\\temp_%s-%s-%s.jpg"
@@ -105,17 +110,41 @@ if RECORD == True: META_FILE = open("C:\\Users\\Craig\\network_vis_tool\\vis_sim
 #this creates the random people
 people = []
 routes_not_pos = 0
-for i in range(NUMBER_OF_PEOPLE):
-    #ensure end doesn't equal start
-    random.shuffle(junctions)
-    start = junctions[0]
-    end = junctions[1]
-    secs = random.randint(0,HOURS_TO_RUN_FOR*3600)
-    person_start_time  = STARTTIME + datetime.timedelta(0,secs)
-    done = built_network.add_flow_point(start,end,person_start_time,WEIGHT)
-    if done == False:
-        routes_not_pos += 1
-
+if FLOWS_FROM_CSV == False:
+    for i in range(NUMBER_OF_PEOPLE):
+        #ensure end doesn't equal start
+        random.shuffle(junctions)
+        start = junctions[0]
+        end = junctions[1]
+        secs = random.randint(0,HOURS_TO_RUN_FOR*3600)
+        person_start_time  = STARTTIME + datetime.timedelta(0,secs)
+        done = built_network.add_flow_point(start,end,person_start_time,WEIGHT)
+        if done == False:
+            routes_not_pos += 1
+elif FLOWS_FROM_CSV == True:
+    #load in census areas
+    areas = "C:\\Users\\Craig\\GitRepo\\ncl_visualise\\static_shps\\tyne_wear_msoas.shp"
+    #get list of nodes which fall in each area
+    area_nodes = tools.get_area_nodes(areas,built_network)
+    #load in census data
+    flow_data = "C:\\Users\\Craig\\GitRepo\\ncl_visualise\\ne_cummute_by_car_msoa_edited.csv"
+    flows_to_create = tools.create_csv_flows(flow_data)    
+    #assign flows based on random selection of network node in census area
+    print "Assigning origins and destinations"
+    flow_od = tools.assign_flows_to_nodes(area_nodes, flows_to_create)
+    print  "Building flow class"
+    z = 0
+    for f in flow_od:
+        secs = random.randint(0,HOURS_TO_RUN_FOR*3600)
+        person_start_time  = STARTTIME + datetime.timedelta(0,secs)
+        done = built_network.add_flow_point(f[0],f[1],person_start_time,WEIGHT)
+        if done == False:
+            routes_not_pos += 1
+        z += 1
+    print "Added all flows"    
+else:
+    print "ERROR! No selection made for source of flows!"
+    
 print "number of people who's route is not possible:", routes_not_pos 
 if RECORD: tools.write_metadata(META_FILE,net_source_shpfile,shpfile_name,length_att,
                      speed_att,default_speed,STARTTIME,SECONDS_PER_FRAME,
@@ -246,7 +275,7 @@ while not done and not quit:
         if not edge.failed:
             color = (124,255,91)
             if num_flows:
-                weight = int(max(1,num_flows/5))
+                weight = int(max(1,num_flows/WEIGHT_FACTOR_E))
                 canvas.draw_line(edge.geom,color,weight)
         else:
             color = (255,100,0)
@@ -255,13 +284,14 @@ while not done and not quit:
     #draws network junctions that people have been through their size is changed lateron
     for node in built_network.nodes:
         if not node.failed:
-            color = (0,153,0)
-            
-            num_flows = node.get_flows(hours=FLOW_COUNT_TIME[0],mins=FLOW_COUNT_TIME[1])
-            
-            if num_flows:
-                weight = int(max(2,num_flows/5))
-                canvas.draw_point(node.geom,color,weight)
+            if SHOW_NODES:
+                color = (0,153,0)
+                
+                num_flows = node.get_flows(hours=FLOW_COUNT_TIME[0],mins=FLOW_COUNT_TIME[1])
+                
+                if num_flows:
+                    weight = int(max(2,num_flows/WEIGHT_FACTOR_N))
+                    canvas.draw_point(node.geom,color,weight)
         else:
             color = (255,0,0)
             canvas.draw_point(node.geom,color,4)   
