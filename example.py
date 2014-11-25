@@ -21,6 +21,7 @@ To do/ideas:
 thickness.
 
 """
+print datetime.datetime.now()
 
 net_source_shpfile = True
 
@@ -29,15 +30,15 @@ length_att = 'length' #None
 speed_att = 'speed' #None #speed should be in meters per second, otherwise results may be miss-representative
 default_speed = 42
 
+shpfile_name = "tw_m_a_b_m_w_travel_timesCopy"
 #shpfile_name = "tw_m_a_b_w_speeds_TEMPfixONLY"
-shpfile_name = "metro_geo_rail"
+#shpfile_name = "metro_geo_rail"
 #shpfile_name = "leeds_m_a_b_w_travel_time"
 #shpfile_name = "uk_internal_routes"
 #shpfile_name = "london_dlr_lines"
 path =  os.path.dirname(os.path.realpath(__file__))
 if net_source_shpfile == True:
-    
-    print os.path.join(path,"networks","%s.shp" % shpfile_name) == '/home/neil/git_rep/ncl_visualise/networks/metro_geo_rail.shp'
+    #print os.path.join(path,"networks","%s.shp" % shpfile_name) == '/home/neil/git_rep/ncl_visualise/networks/metro_geo_rail.shp'
     built_network = ncl_network_sim.build_network(os.path.join(path,"networks","%s.shp" % shpfile_name) , speed_att=speed_att, default_speed=default_speed, length_att=length_att)
 elif net_source_shpfile == False:
     host = 'localhost'; user = 'postgres'; port = '5433'
@@ -122,17 +123,19 @@ if FLOWS_FROM_CSV == False:
         if done == False:
             routes_not_pos += 1
 elif FLOWS_FROM_CSV == True:
+    print "Finding nodes in areas;", datetime.datetime.now()
     #load in census areas
     areas = "C:\\Users\\Craig\\GitRepo\\ncl_visualise\\static_shps\\tyne_wear_msoas.shp"
     #get list of nodes which fall in each area
     area_nodes = tools.get_area_nodes(areas,built_network)
     #load in census data
+    print "Creating flows;", datetime.datetime.now()
     flow_data = "C:\\Users\\Craig\\GitRepo\\ncl_visualise\\ne_cummute_by_car_msoa_edited.csv"
     flows_to_create = tools.create_csv_flows(flow_data)    
     #assign flows based on random selection of network node in census area
-    print "Assigning origins and destinations"
+    print "Assigning origins and destinations:", datetime.datetime.now()
     flow_od = tools.assign_flows_to_nodes(area_nodes, flows_to_create)
-    print  "Building flow class"
+    print  "Building flow class:", datetime.datetime.now()
     z = 0
     for f in flow_od:
         secs = random.randint(0,HOURS_TO_RUN_FOR*3600)
@@ -141,7 +144,7 @@ elif FLOWS_FROM_CSV == True:
         if done == False:
             routes_not_pos += 1
         z += 1
-    print "Added all flows"    
+    print "Added all flows:", datetime.datetime.now()
 else:
     print "ERROR! No selection made for source of flows!"
     
