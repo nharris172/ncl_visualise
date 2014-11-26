@@ -90,7 +90,7 @@ STARTTIME = datetime.datetime(2014,2,2,7,00) #set start start to 7 this morning
 SECONDS_PER_FRAME = 30 #set what the frame interval equals in realtime 
 
 #simulation variables
-NUMBER_OF_PEOPLE = 1000
+NUMBER_OF_FLOWS = 5000
 HOURS_TO_RUN_FOR = 1 #time which start times are spread over
 WEIGHT = 'time'
 FLOW_COUNT_TIME = [0,10]#HOURS,MINUTES
@@ -105,7 +105,7 @@ if RECORD == True: META_FILE = open("C:\\Users\\Craig\\network_vis_tool\\vis_sim
 #this creates the random people
 people = []
 routes_not_pos = 0
-for i in range(NUMBER_OF_PEOPLE):
+for i in range(NUMBER_OF_FLOWS):
     #ensure end doesn't equal start
     random.shuffle(junctions)
     start = junctions[0]
@@ -119,14 +119,14 @@ for i in range(NUMBER_OF_PEOPLE):
 print "number of people who's route is not possible:", routes_not_pos 
 if RECORD: tools.write_metadata(META_FILE,net_source_shpfile,shpfile_name,length_att,
                      speed_att,default_speed,STARTTIME,SECONDS_PER_FRAME,
-                     NUMBER_OF_PEOPLE,routes_not_pos,HOURS_TO_RUN_FOR,WEIGHT,FLOW_COUNT_TIME)
+                     NUMBER_OF_FLOWS,routes_not_pos,HOURS_TO_RUN_FOR,WEIGHT,FLOW_COUNT_TIME)
 
 #------------------------------------------------------------------------------
 #Variables to tailor failure analysis
 MANUAL = False #define times our have them generated
 RANDOM_TIME = True #if want to create times at random
 TIME_INTERVALS = 4 #set an interval(mins) between failures.
-NUMBER_OF_FAILURES = 3 #the number of failures which are to occur. 
+NUMBER_OF_FAILURES = 10 #the number of failures which are to occur. 
 
 TARGETED = False #if selecting nodes by their flow value - will also add degree - may be able to get rid of this
 FLOW = True #removes the node which the greatest number of flows have passed through in the last 10mins for example
