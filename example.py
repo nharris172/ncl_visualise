@@ -1,6 +1,6 @@
 import ncl_visualize
 import ncl_network_sim
-import datetime 
+import datetime
 import random
 from ncl_network_sim import tools
 import os 
@@ -10,18 +10,17 @@ Major:
 -WEIGHT varaible used for the inital creation of the flow points, though not 
 when they fail at the moment (uses a default which is set as time). Needs to be
 sorted so is varaible, i.e. can be set to cost for example.
--Would be good to be able to add the flow/degree value for a node/edge removed 
-in a targeted failure.
-
-Other:
+-Need to look at adding edge failure visualisation to the geo failure method
 
 To do/ideas:
--Do we want to check for a pre-exisitng length field?
 -In dense networks, changing colours of edges might be better than line 
 thickness.
+-For geo failure, produce stats on the accumulative effect rather/as well as
+for the individual failures.
 
 """
 
+    
 net_source_shpfile = True
 
 #attribute name in shapefile/datatable - set as None if they are not in the shapefile
@@ -37,7 +36,7 @@ shpfile_name = "metro_geo_rail"
 path =  os.path.dirname(os.path.realpath(__file__))
 if net_source_shpfile == True:
     
-    print os.path.join(path,"networks","%s.shp" % shpfile_name) == '/home/neil/git_rep/ncl_visualise/networks/metro_geo_rail.shp'
+    #print os.path.join(path,"networks","%s.shp" % shpfile_name) == '/home/neil/git_rep/ncl_visualise/networks/metro_geo_rail.shp'
     built_network = ncl_network_sim.build_network(os.path.join(path,"networks","%s.shp" % shpfile_name) , speed_att=speed_att, default_speed=default_speed, length_att=length_att)
 elif net_source_shpfile == False:
     host = 'localhost'; user = 'postgres'; port = '5433'
@@ -90,7 +89,7 @@ STARTTIME = datetime.datetime(2014,2,2,7,00) #set start start to 7 this morning
 SECONDS_PER_FRAME = 30 #set what the frame interval equals in realtime 
 
 #simulation variables
-NUMBER_OF_FLOWS = 5000
+NUMBER_OF_FLOWS = 1000
 HOURS_TO_RUN_FOR = 1 #time which start times are spread over
 WEIGHT = 'time'
 FLOW_COUNT_TIME = [0,10]#HOURS,MINUTES
@@ -103,7 +102,7 @@ if RECORD == True: META_FILE = open("C:\\Users\\Craig\\network_vis_tool\\vis_sim
 #------------------------------------------------------------------------------
 
 #this creates the random people
-people = []
+flows = []
 routes_not_pos = 0
 for i in range(NUMBER_OF_FLOWS):
     #ensure end doesn't equal start
@@ -125,20 +124,18 @@ if RECORD: tools.write_metadata(META_FILE,net_source_shpfile,shpfile_name,length
 #Variables to tailor failure analysis
 MANUAL = False #define times our have them generated
 RANDOM_TIME = True #if want to create times at random
-TIME_INTERVALS = 4 #set an interval(mins) between failures.
-NUMBER_OF_FAILURES = 10 #the number of failures which are to occur. 
+TIME_INTERVALS = None #set an interval(mins) between failures.
+NUMBER_OF_FAILURES = 5 #the number of failures which are to occur. 
 
+RANDOM1 = False
 TARGETED = False #if selecting nodes by their flow value - will also add degree - may be able to get rid of this
 FLOW = True #removes the node which the greatest number of flows have passed through in the last 10mins for example
 DEGREE = False #does not yet work
 NODE_EDGE_RANDOM = 'NODE' #should be NODE,EDGE or NODE_EDGE
 
-GEO_FAILURE = False
-SHP_FILE = "C:\\Users\\Craig\\Dropbox\\vis_tool_data\\PiP\\polygon_multiple_failures_testing.shp"
-'''
-if GEO_FAILURE:
-    canvas.LoadStatic.Polygon("C:\\Users\\Craig\\Dropbox\\vis_tool_data\\PiP\\polygon_multiple_failures_testing.shp",color=(0,0,255))
-'''
+GEO_FAILURE = True
+SHP_FILE = "C:\\Users\\Craig\\GitRepo\\ncl_visualise\\static_shps\\PiP\\polygon_coastal_flood_eg.shp"
+
 #------------------------------------------------------------------------------
 
 
@@ -147,13 +144,17 @@ EDGE_FAILURE_TIME=None;NODE_FAILURE_TIME=None;FAILURE_TIMES=None
 
 if MANUAL == False:
     if TARGETED == False: #random time(s), random component selection
-        tools.random_failures(TIME_INTERVALS,NUMBER_OF_FAILURES,STARTTIME,NODE_EDGE_RANDOM,built_network,junctions,net_edges)
+        #need to make this the same as targeted below - select nodes to remove later
+        RANDOM1 = True
+        RANDOM_FAILURE_TIMES = tools.random_times(TIME_INTERVALS, 
+                    NUMBER_OF_FAILURES, STARTTIME, built_network)
+        #tools.random_failures(TIME_INTERVALS,NUMBER_OF_FAILURES,STARTTIME,NODE_EDGE_RANDOM,built_network,junctions,net_edges)
     elif TARGETED == True: #random time(s), targeted removal
-         FAILURE_TIMES = tools.targeted_times(RANDOM_TIME,TIME_INTERVALS,NUMBER_OF_FAILURES,STARTTIME,built_network)
-    
+        TARGETED_FAILURE_TIMES = tools.targeted_times(RANDOM_TIME,
+                    TIME_INTERVALS,NUMBER_OF_FAILURES,STARTTIME,built_network)  
     
 elif MANUAL == True:
-    EDGE_FAILURE_TIME=None;NODE_FAILURE_TIME=None;FAILURE_TIMES=None
+    EDGE_FAILURE_TIME=None;NODE_FAILURE_TIME=None;TARGETED_FAILURE_TIMES=None;RANDOM_FAILURE_TIMES=None
     if TARGETED == False:
         #manual time setting, random component selection
         #year, month, day, hour, minut
@@ -168,7 +169,7 @@ elif MANUAL == True:
         tools.manual_random_edges(NODE_FAILURE_TIME,junctions,built_network)
          
     elif TARGETED == True:
-        FAILURE_TIMES = [
+        TARGETED_FAILURE_TIMES = [
         #datetime.datetime(2014,2,2,7,5),
         #datetime.datetime(2014,2,2,7,11),
         #datetime.datetime(2014,2,2,7,14),
@@ -185,7 +186,7 @@ if GEO_FAILURE == True:
     GEO_F_TIME = [
     datetime.datetime(2014,2,2,7,04)  
     ]
-    
+
 if RECORD: tools.write_failure_data(META_FILE,MANUAL,RANDOM_TIME,TIME_INTERVALS,NUMBER_OF_FAILURES,TARGETED,
                              NODE_EDGE_RANDOM,FLOW,DEGREE,FAILURE_TIMES,EDGE_FAILURE_TIME,NODE_FAILURE_TIME)
 
@@ -196,19 +197,29 @@ done = False
 k = 0
 canvas.start_screen()
 
+#need to make a copy of junctions so do not try and remove the same node twice
+failure_junctions = [] 
+for junc in junctions: failure_junctions.append(junc)
+
+
 while not done and not quit:
     
     #check if any tageted failures are due and create full instance if so
     if TARGETED == True:
-        tools.get_targted_comp(NODE_EDGE_RANDOM, FAILURE_TIMES,FLOW_COUNT_TIME,built_network,FLOW,DEGREE)
-
+        failure_junctions = tools.get_targted_comp(NODE_EDGE_RANDOM, TARGETED_FAILURE_TIMES,
+                               FLOW_COUNT_TIME,built_network, failure_junctions,
+                               FLOW,DEGREE)
+    elif RANDOM1 == True:
+        failure_junctions = tools.get_random_comp(NODE_EDGE_RANDOM, RANDOM_FAILURE_TIMES,
+                                  built_network, failure_junctions, net_edges)
     #check for geo failure
     if GEO_FAILURE == True:
-        tools.geo_failure_comp(NODE_EDGE_RANDOM, FAILURE_TIMES,FLOW_COUNT_TIME,built_network,FLOW,DEGREE,SHP_FILE,GEO_F_TIME)
-    
+        failure_junctions = tools.geo_failure_comp(NODE_EDGE_RANDOM, FAILURE_TIMES, FLOW_COUNT_TIME,
+                               built_network, failure_junctions, net_edges, FLOW, DEGREE, SHP_FILE, GEO_F_TIME)
+
     for ftime in GEO_F_TIME:
         if ftime == built_network.time:
-            canvas.LoadStatic.Polygon("C:\\Users\\Craig\\Dropbox\\vis_tool_data\\PiP\\polygon_multiple_failures_testing.shp",color=(0,0,255))
+            canvas.LoadStatic.Polygon(SHP_FILE,color=(0,0,255))
  
     #check if any failures are due and reroute flows
     fails = built_network.Failures.check_fails()
@@ -279,6 +290,7 @@ while not done and not quit:
         canvas.record(FILE_PATH, built_network.time.time(),k)
 
     k+=1
+
 if RECORD: META_FILE.close()
 # Be IDLE friendly. If you forget this line, the program will 'hang'
 # on exit.

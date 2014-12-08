@@ -23,6 +23,7 @@ def manual_random_nodes(NODE_FAILURE_TIME, junctions,built_network):
         node_to_fail = junctions[i]
         built_network.Failures.add_node_fail(node_to_fail,time)
 
+#not using below in most recent version
 def random_failures(TIME_INTERVALS,NUMBER_OF_FAILURES,STARTTIME,NODE_EDGE_RANDOM,built_network,junctions,net_edges):
     """Creates a set of failures. These can be at random times or defined by a 
     set interval. The components to remove are selected at random. All these 
@@ -47,6 +48,22 @@ def random_failures(TIME_INTERVALS,NUMBER_OF_FAILURES,STARTTIME,NODE_EDGE_RANDOM
             edge_to_fail = net_edges[random.randint(0,len(net_edges))]
             built_network.Failures.add_edge_fail(edge_to_fail,time)
 
+   
+def random_times(TIME_INTERVALS,NUMBER_OF_FAILURES,STARTTIME,built_network):
+    """Creates a set of failure times. These can be at random times or defined 
+    by a set interval. The components to remove are selected at random later."""
+    failure_times = []
+    while len(failure_times) < NUMBER_OF_FAILURES:
+        #set time for failure
+        if TIME_INTERVALS == None:
+            time = datetime.datetime(2014,2,2,random.randint(7,7),random.randint(0,59))
+            failure_times.append(time)
+        else:
+            secs = (TIME_INTERVALS*60) * (len(built_network.Failures.failures)+1)
+            time = STARTTIME + datetime.timedelta(0,secs)
+            failure_times.append(time)
+    return failure_times
+    
     
 def targeted_times(RANDOM,TIME_INTERVALS,NUMBER_OF_FAILURES,STARTTIME,built_network):
     """For a targted attack, a set of times are randomly generated or by a 
@@ -62,8 +79,31 @@ def targeted_times(RANDOM,TIME_INTERVALS,NUMBER_OF_FAILURES,STARTTIME,built_netw
             time = STARTTIME + datetime.timedelta(0,secs)
             failure_times.append(time)  
     return failure_times
-      
-def get_targted_comp(NODE_EDGE_RANDOM, failure_times,FLOW_COUNT_TIME,built_network,FLOW,DEGREE):
+
+def get_random_comp(NODE_EDGE_RANDOM, failure_times, built_network, junctions, net_edges):
+    """Checks to see if any random failurs are schedules, and if so selects a 
+    node or edge at random for removal"""
+    for ftime in failure_times:
+        #if appropriate time
+        if ftime >= built_network.time and ftime < built_network.time + built_network.tick_rate:
+            meth = None
+            if NODE_EDGE_RANDOM == 'NODE_EDGE' or 'EDGE_NODE':
+                meth = random.randint(0,1)
+                if meth==0: meth = 'NODE'
+                else: meth = 'EDGE'
+            if NODE_EDGE_RANDOM == 'NODE' or meth == 'NODE':
+                random.shuffle(junctions)
+                node_to_fail = junctions[0]
+                junctions.remove(node_to_fail)
+                built_network.Failures.add_node_fail(node_to_fail,ftime)
+                
+            elif NODE_EDGE_RANDOM == 'EDGE' or meth == 'EDGE':
+                edge_to_fail = net_edges[random.randint(0,len(net_edges))]
+                built_network.Failures.add_edge_fail(edge_to_fail,ftime)
+    
+    return junctions
+    
+def get_targted_comp(NODE_EDGE_RANDOM, failure_times,FLOW_COUNT_TIME,built_network,junctions,FLOW,DEGREE):
     """Checks to see if any failures are scheduled. If so selects a component 
     to remove in a targetd way (via flow or a metric) and using the time adds 
     the failure to the Failure set."""
@@ -71,7 +111,8 @@ def get_targted_comp(NODE_EDGE_RANDOM, failure_times,FLOW_COUNT_TIME,built_netwo
         #check times for failures
         for ftime in failure_times:
             #if appropriate time
-            if ftime >= built_network.time and ftime < built_network.time + datetime.timedelta(0,built_network.tick_rate):
+            #if ftime >= built_network.time and ftime < built_network.time + datetime.timedelta(0,built_network.tick_rate):
+            if ftime >= built_network.time and ftime < built_network.time + built_network.tick_rate:
                 max_flow = -99
                 meth = None
                 if NODE_EDGE_RANDOM == 'NODE_EDGE':
@@ -87,6 +128,7 @@ def get_targted_comp(NODE_EDGE_RANDOM, failure_times,FLOW_COUNT_TIME,built_netwo
                                  max_flow = num_flows
                                  node_to_fail = node
                     built_network.Failures.add_node_fail(node_to_fail,ftime)
+                    junctions.remove(node_to_fail)
                 #if edges, calc flows and edge to remove
                 elif NODE_EDGE_RANDOM == 'EDGE' or meth == 'EDGE':
                     for edge in built_network.edges:  
@@ -96,6 +138,7 @@ def get_targted_comp(NODE_EDGE_RANDOM, failure_times,FLOW_COUNT_TIME,built_netwo
                                 max_flow = num_flows
                                 edge_to_fail = edge
                     built_network.Failures.add_edge_fail(edge_to_fail,ftime)
+        return junctions
     elif FLOW == False and DEGREE == True:        
         #check times for failures
         for ftime in failure_times:
@@ -128,8 +171,10 @@ def get_targted_comp(NODE_EDGE_RANDOM, failure_times,FLOW_COUNT_TIME,built_netwo
                         nodes_w_max.pop(item)
                 #add failure intance
                 built_network.Failures.add_node_fail(node_to_fail,ftime)
+                junctions.remove(node_to_fail)
+        return junctions
     else:
-        return
+        return junctions
         
 def write_metadata(META_FILE,net_source_shpfile,shpfile_name,length_att,speed_att,
                    default_speed,STARTTIME,SECONDS_PER_FRAME,NUMBER_OF_PEOPLE,
@@ -196,7 +241,7 @@ def point_in_poly(coord,poly):
 
     return inside
 
-def geo_failure(shp_file, G):
+def geo_failure(shp_file, junctions, net_edges):
     import shapefile
     polygons = []
     sf = shapefile.Reader(shp_file)
@@ -212,7 +257,7 @@ def geo_failure(shp_file, G):
     number_inside = 0
     #extract list of coords
     for polygon in polygons:
-        for nd in G.nodes:
+        for nd in junctions:
             coords = nd.geom
             x,y = coords[0],coords[1]
             coord = float(x),float(y)
@@ -220,15 +265,36 @@ def geo_failure(shp_file, G):
             if inside == True:
                 nodes_inside.append(nd)
                 number_inside += 1
-    return G, number_inside,nodes_inside
     
-def geo_failure_comp(NODE_EDGE_RANDOM, FAILURE_TIMES,FLOW_COUNT_TIME,built_network,FLOW,DEGREE,SHP_FILE,GEO_F_TIME):
+    failed_edges = []
+    
+    for eg in net_edges:
+        for nd in nodes_inside:
+            if eg.start_node == nd or eg.end_node == nd:
+                failed_edges.append(eg)
+    
+    return number_inside,nodes_inside, failed_edges
+    
+def geo_failure_comp(NODE_EDGE_RANDOM, FAILURE_TIMES,FLOW_COUNT_TIME,built_network,junctions,edge_set,FLOW,DEGREE,SHP_FILE,GEO_F_TIME):
     """"""
     for ftime in GEO_F_TIME:
         #if appropriate time
-        if ftime >= built_network.time and ftime < built_network.time + datetime.timedelta(0,built_network.tick_rate):
-            G,number_inside,nodes_inside = geo_failure(SHP_FILE,built_network)
+        if ftime >= built_network.time and ftime < built_network.time + built_network.tick_rate:
+ 
+            number_inside,nodes_inside, failed_edges = geo_failure(SHP_FILE,junctions,edge_set)
             for nd in nodes_inside:
                 #add node failure
                 built_network.Failures.add_node_fail(nd,ftime)
-    return
+                
+                try:
+                    junctions.remove(nd)
+                except:
+                    #may have already been removed under one of the other failure methods
+                    pass
+            #add edge failure             
+            #for edge in failed_edges:
+            #    built_network.Failures.add_edge_fail(edge,ftime)
+                    
+    return junctions
+    
+    
