@@ -83,7 +83,13 @@ def run_sim():
     SECONDS_PER_FRAME = 30 #set what the frame interval equals in realtime 
     
     #simulation variables
+    RANDOM_FLOWS = False
+    #file paths for flow origin/destination areas and flow data csv
+    ZONES = "C:\\Users\\Craig\\GitRepo\\ncl_visualise\\static_shps\\tyne_wear_msoas.shp"
+    FLOW_CSV = "C:\\Users\\Craig\\GitRepo\\ne_cummute_by_car_msoa_edited.csv"    
+    #for random flows        
     NUMBER_OF_FLOWS = 1000
+
     HOURS_TO_RUN_FOR = 0.5 #time which start times are spread over
     WEIGHT = 'time'
     FLOW_COUNT_TIME = [0,10]#HOURS,MINUTES
@@ -97,19 +103,28 @@ def run_sim():
     
     #------------------------------------------------------------------------------
     
-    #this creates the random people
+    #this creates the random flows
     routes_not_pos = 0
-    for i in range(NUMBER_OF_FLOWS):
-        #ensure end doesn't equal start
-        random.shuffle(junctions)
-        start = junctions[0]
-        end = junctions[1]
-        secs = random.randint(0,HOURS_TO_RUN_FOR*3600)
-        person_start_time  = STARTTIME + datetime.timedelta(0,secs)
-        done = built_network.add_flow_point(start,end,person_start_time,WEIGHT)
-        if done == False:
-            routes_not_pos += 1
-    
+    if RANDOM_FLOWS:
+        for i in range(NUMBER_OF_FLOWS):
+            #ensure end doesn't equal start
+            random.shuffle(junctions)
+            start = junctions[0]
+            end = junctions[1]
+            secs = random.randint(0,HOURS_TO_RUN_FOR*3600)
+            person_start_time  = STARTTIME + datetime.timedelta(0,secs)
+            done = built_network.add_flow_point(start,end,person_start_time,WEIGHT)
+            if done == False:
+                routes_not_pos += 1
+    else:
+        #loads flows and assigns start and end nodes within census zone (AREAS)
+        loaded_flows = tools.load_census_flows(ZONES,FLOW_CSV,built_network)
+        for f in loaded_flows:
+            secs = random.randint(0,HOURS_TO_RUN_FOR*3600)
+            person_start_time  = STARTTIME + datetime.timedelta(0,secs)
+            done = built_network.add_flow_point(f[0],f[1],person_start_time,WEIGHT)
+            if done == False: routes_not_pos += 1
+              
     print "number of people who's route is not possible:", routes_not_pos 
     if RECORD: tools.write_metadata(META_FILE,net_source_shpfile,shpfile_name,length_att,
                          speed_att,default_speed,STARTTIME,SECONDS_PER_FRAME,
