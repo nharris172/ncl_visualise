@@ -13,12 +13,12 @@ class EdgeFailure:
         self.edge = _edge_class
         self.time = _time
         self.stats = {
-            'reroute':{'num':0,'print_str':'number of people re-routed :'},
-            'not_pos':{'num':0,'print_str':'number of people whose route was no longer possible :'},
-            'avg_b':{'num':0,'print_str':'Average length before :'},
-            'avg_a':{'num':0,'print_str':'Average length after :'},
-            'avg_time_b':{'num':0,'print_str':'Average travel time before :'},
-            'avg_time_a':{'num':0,'print_str':'Average travel time after :'},
+            'reroute':{'num':0,'print_str':'Number of flows re-routed:'},
+            'not_pos':{'num':0,'print_str':'Number of failed flows:'},
+            'avg_b':{'num':0,'print_str':'Average length before:'},
+            'avg_a':{'num':0,'print_str':'Average length after:'},
+            'avg_time_b':{'num':0,'print_str':'Average travel time before:'},
+            'avg_time_a':{'num':0,'print_str':'Average travel time after:'},
         }
         
     def fail(self,reassign_start,reassign_dest,weight):
@@ -433,13 +433,13 @@ class NclNetwork:
         #find the edge to remove
         start,end = edgefail.edge.start_node,edgefail.edge.end_node
         #remove the edge from the network
-        try:        
-            self.graph.remove_edge(start._truncated_geom,end._truncated_geom)
-        except:
-            print "Could not remove edge from network. It did not exist."
-            exit()
-            
-            
+        
+        #try:        
+        self.graph.remove_edge(start._truncated_geom,end._truncated_geom)
+        #except:
+        #    print "Could not remove edge from network. It did not exist."
+        #    exit()
+        
         v = 0
         avg_b = self.average_journey_length()
         avg_time_b = self.average_journey_length(length=False)

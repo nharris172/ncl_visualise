@@ -5,10 +5,6 @@ import random
 from ncl_network_sim import tools
 import os 
 """
-Current issues:
-Major:
-
-
 To do/ideas:
 -Need to look at adding edge failure visualisation to the geo failure method
 -In dense networks, changing colours of edges might be better than line 
@@ -88,7 +84,7 @@ def run_sim():
     
     #simulation variables
     NUMBER_OF_FLOWS = 1000
-    HOURS_TO_RUN_FOR = 1 #time which start times are spread over
+    HOURS_TO_RUN_FOR = 0.5 #time which start times are spread over
     WEIGHT = 'time'
     FLOW_COUNT_TIME = [0,10]#HOURS,MINUTES
     
@@ -126,11 +122,11 @@ def run_sim():
     TIME_INTERVALS = None #set an interval(mins) between failures.
     NUMBER_OF_FAILURES = 5 #the number of failures which are to occur.
     
-    RANDOM1 = False
-    TARGETED = False #if selecting nodes by their flow value - will also add degree - may be able to get rid of this
+    RANDOM_F = False
+    TARGETED = True #if selecting nodes by their flow value - will also add degree - may be able to get rid of this
     FLOW = True #removes the node which the greatest number of flows have passed through in the last 10mins for example
     DEGREE = False #does not yet work
-    NODE_EDGE_RANDOM = 'NODE' #should be NODE,EDGE or NODE_EDGE
+    NODE_EDGE_RANDOM = 'NODE_EDGE' #should be NODE, EDGE or NODE_EDGE
    
     #geo failure
     GEO_FAILURE = False
@@ -148,7 +144,7 @@ def run_sim():
     
     if MANUAL == False:
         if TARGETED == False: #random time(s), random component selection
-            RANDOM1 = True
+            RANDOM_F = True
             RANDOM_FAILURE_TIMES = tools.generate_failure_times(RANDOM_TIME,
                         TIME_INTERVALS,NUMBER_OF_FAILURES,STARTTIME,HOURS_TO_RUN_FOR,built_network)
         elif TARGETED == True: #random time(s), targeted component selection
@@ -202,23 +198,28 @@ def run_sim():
     #need to make a copy of junctions so do not try and remove the same node twice
     failure_junctions = [] 
     for junc in junctions: failure_junctions.append(junc)
-    
+    failure_edges = []
+    for edge in net_edges: failure_edges.append(edge)
     
     while not done and not quit:
         
-        #check if any tageted failures are due and create full instance if so
+        #check if any tageted failures are scheduled
         if TARGETED == True:
             failure_junctions = tools.get_targted_comp(NODE_EDGE_RANDOM, TARGETED_FAILURE_TIMES,
                                    FLOW_COUNT_TIME,built_network, failure_junctions,
                                    FLOW,DEGREE)
-        elif RANDOM1 == True:
-            failure_junctions = tools.get_random_comp(NODE_EDGE_RANDOM, RANDOM_FAILURE_TIMES,
-                                      built_network, failure_junctions, net_edges)
-        #check for geo failure
+        #check if any random failures are scheduled
+        elif RANDOM_F == True:
+            failure_junctions, failure_edges = tools.get_random_comp(NODE_EDGE_RANDOM, RANDOM_FAILURE_TIMES,
+                                   built_network, failure_junctions, failure_edges)
+        #check if a geo failure is scheduled
         if GEO_FAILURE == True:
-            failure_junctions = tools.geo_failure_comp(NODE_EDGE_RANDOM, FAILURE_TIMES, FLOW_COUNT_TIME,
-                                   built_network, failure_junctions, net_edges, FLOW, DEGREE, SHP_FILE, GEO_F_TIME)
-    
+            failure_junctions, failure_edges = tools.geo_failure_comp(NODE_EDGE_RANDOM, FAILURE_TIMES, FLOW_COUNT_TIME,
+                                   built_network, failure_junctions, failure_edges, SHP_FILE, GEO_F_TIME)
+            #failure_edges = []
+            #for edge in built_network.edges:failure_edges.append(edge)
+                
+        #load polygon onto map for visualisation
         for ftime in GEO_F_TIME:
             if ftime == built_network.time:
                 canvas.LoadStatic.Polygon(SHP_FILE,color=(0,0,255))
