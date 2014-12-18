@@ -88,12 +88,12 @@ def run_sim():
     
     #simulation variables
     NUMBER_OF_FLOWS = 1000
-    HOURS_TO_RUN_FOR = 0.5 #time which start times are spread over
+    HOURS_TO_RUN_FOR = 1 #time which start times are spread over
     WEIGHT = 'time'
     FLOW_COUNT_TIME = [0,10]#HOURS,MINUTES
     
     #outputs
-    PRINT_STATS = True
+    PRINT_STATS = False
     RECORD = False
     #FILE_PATH = "C:\\Users\\Craig\\network_vis_tool\\vis_sim\\temp_%s-%s-%s.jpg"
     FILE_PATH = "C:\\Users\\Craig\\network_vis_tool\\vis_sim - TW\\temp%s.jpg"
@@ -121,10 +121,10 @@ def run_sim():
     
     #------------------------------------------------------------------------------
     #Variables to tailor failure analysis
-    MANUAL = False #define times our have them generated
-    RANDOM_TIME = True #if want to create times at random
+    MANUAL = False #define times and failure methods (set as True)
+    RANDOM_TIME = True #if failure times to be randomly generated (set as True)
     TIME_INTERVALS = None #set an interval(mins) between failures.
-    NUMBER_OF_FAILURES = 1 #the number of failures which are to occur. 
+    NUMBER_OF_FAILURES = 5 #the number of failures which are to occur.
     
     RANDOM1 = False
     TARGETED = False #if selecting nodes by their flow value - will also add degree - may be able to get rid of this
@@ -148,14 +148,12 @@ def run_sim():
     
     if MANUAL == False:
         if TARGETED == False: #random time(s), random component selection
-            #need to make this the same as targeted below - select nodes to remove later
             RANDOM1 = True
-            RANDOM_FAILURE_TIMES = tools.random_times(TIME_INTERVALS, 
-                        NUMBER_OF_FAILURES, STARTTIME, built_network)
-            #tools.random_failures(TIME_INTERVALS,NUMBER_OF_FAILURES,STARTTIME,NODE_EDGE_RANDOM,built_network,junctions,net_edges)
-        elif TARGETED == True: #random time(s), targeted removal
-            TARGETED_FAILURE_TIMES = tools.targeted_times(RANDOM_TIME,
-                        TIME_INTERVALS,NUMBER_OF_FAILURES,STARTTIME,built_network)  
+            RANDOM_FAILURE_TIMES = tools.generate_failure_times(RANDOM_TIME,
+                        TIME_INTERVALS,NUMBER_OF_FAILURES,STARTTIME,HOURS_TO_RUN_FOR,built_network)
+        elif TARGETED == True: #random time(s), targeted component selection
+            TARGETED_FAILURE_TIMES = tools.generate_failure_times(RANDOM_TIME,
+                        TIME_INTERVALS,NUMBER_OF_FAILURES,STARTTIME,HOURS_TO_RUN_FOR,built_network)  
         
     elif MANUAL == True:
         EDGE_FAILURE_TIME=None;NODE_FAILURE_TIME=None;TARGETED_FAILURE_TIMES=None;RANDOM_FAILURE_TIMES=None

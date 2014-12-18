@@ -65,13 +65,21 @@ def random_times(TIME_INTERVALS,NUMBER_OF_FAILURES,STARTTIME,built_network):
     return failure_times
     
     
-def targeted_times(RANDOM,TIME_INTERVALS,NUMBER_OF_FAILURES,STARTTIME,built_network):
+def generate_failure_times(RANDOM,TIME_INTERVALS,NUMBER_OF_FAILURES,STARTTIME,HOURS_TO_RUN_FOR,built_network):
     """For a targted attack, a set of times are randomly generated or by a 
-    defined interval."""    
+    defined interval."""
+    
+    if type(HOURS_TO_RUN_FOR) != int and HOURS_TO_RUN_FOR >= 1:
+        print "-------------------------------\nAny time of an hour or longer must be an integer."
+        exit()
+        
     failure_times = []
     if RANDOM == True:
         while len(failure_times) < NUMBER_OF_FAILURES:
-            time = datetime.datetime(2014,2,2,random.randint(7,7),random.randint(0,59))
+            if HOURS_TO_RUN_FOR < 1:        
+                time = datetime.datetime(STARTTIME.year,STARTTIME.month,STARTTIME.day,STARTTIME.hour,random.randint(0,(60*HOURS_TO_RUN_FOR)))
+            else: 
+                time = datetime.datetime(STARTTIME.year,STARTTIME.month,STARTTIME.day,random.randint(STARTTIME.hour,STARTTIME.hour+HOURS_TO_RUN_FOR-1),random.randint(0,59))
             failure_times.append(time)
     elif TIME_INTERVALS <> None:
         while len(failure_times) < NUMBER_OF_FAILURES:
