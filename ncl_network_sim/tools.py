@@ -144,12 +144,10 @@ def get_targted_comp(NODE_EDGE_RANDOM, failure_times,FLOW_COUNT_TIME,built_netwo
         for ftime in failure_times:
             #if appropriate time
             if ftime >= built_network.time and ftime < built_network.time + datetime.timedelta(0,built_network.tick_rate):
-                print '----------------------------'
-                print 'Running node degree failure identification'
                 
                 node_degrees = built_network.graph.degree()
                 max_degree = max(node_degrees.values())
-                print 'Max degree is:',max_degree
+            
                 nodes_w_max=[] #stores all nodes with a equal max degree
                 for node in node_degrees:
                     if node_degrees[node] == max_degree:

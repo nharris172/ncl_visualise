@@ -21,10 +21,10 @@ class EdgeFailure:
             'avg_time_a':{'num':0,'print_str':'Average travel time after :'},
         }
         
-    def fail(self):
+    def fail(self,reassign_start,reassign_dest,weight):
         """Run the edge failure code."""
         self.edge.failed = True
-        self.fail_attr.network.edge_remove(self)
+        self.fail_attr.network.edge_remove(self,reassign_start,reassign_dest,weight)
     
     def fill_stats(self,reroute,not_pos,avg_a,avg_b,avg_time_b,avg_time_a):
         """Populate the stats dict witht the stats from the affects of the edge
@@ -38,6 +38,7 @@ class EdgeFailure:
 
     def print_stats(self,):
         """Prints the stats as in the stats dict."""
+        print '----------------------------'
         for key,val in self.stats.iteritems():
             print val['print_str'],val['num']
     
@@ -62,38 +63,59 @@ class NodeFailure:
         self.node = _node_class
         self.time = _time
         self.stats = {
-            'avg_b':{'num':0,'print_str':'Average length before :'},
-            'avg_a':{'num':0,'print_str':'Average length after :'},
-            'avg_time_b':{'num':0,'print_str':'Average travel time before :'},
-            'avg_time_a':{'num':0,'print_str':'Average travel time after :'},
-            'start_rem':{ 'num':0,'print_str':"number of people who's start node was removed:"},
-            'inter_node_rem':{'num':0,'print_str':"number of people who had a intermediate node removed:"},
-            'dest_rem':{'num':0,'print_str':"number of people who's destination node was removed:"},
-            'reroute':{'num':0,'print_str':'number of people re-routed :'},
-            'not_pos':{'num':0,'print_str':'number of people whose route was no longer possible :'},
-            'journey_rem':{'num':0,'print_str':"number of people who's start/dest ended up being the same:"},
-        }
+            'avg_b':{'num':0,'print_str':'Average length before:'},
+            'avg_a':{'num':0,'print_str':'Average length after:'},
+            'avg_time_b':{'num':0,'print_str':'Average travel time before:'},
+            'avg_time_a':{'num':0,'print_str':'Average travel time after:'},
+            'start_rem':{ 'num':0,'print_str':"Number of flows where the start failed:"},
+            'inter_node_rem':{'num':0,'print_str':"Number of flows where a waypoint failed:"},
+            'dest_rem':{'num':0,'print_str':"Number of flows where the destination has failed:"},
+            'journey_rem':{'num':0,'print_str':"Number of flows who's start/dest ended up being the same:"},
+            'failure_start_rem':{'num':0,'print_str':"Number of flows failed as start failed:"},
+            'failure_dest_rem':{'num':0,'print_str':"Number of flows failed as destination failed:"},
+            'start_rem_no_effect':{'num':0,'print_str':"Number of flows unaffected where their start has failed:"},
+            'failed_inter_rem':{'num':0,'print_str':"Number of failed flows as a waypoint failed:"},
+            'reroute_start_fail': {'num':0,'print_str':"Number of flows rerouted as start failed:"},
+            'reroute_dest_fail':{'num':0,'print_str':"Number of flows rerouted as destination failed:"},
+            'reroute_inter_fail':{'num':0,'print_str':"Number of flows rerouted as a waypoint failed:"},
+            'start_is_end':{'num':0,'print_str':"Number of failures where reassigned start/end clashed:"},
+            'failed_flows':{'num':0,'print_str':"Number of failed flows:"},
+            'rerouted_flows':{'num':0,'print_str':"Number of flows rerouted:"},
+            'noroute':{'num':0,'print_str':"Number of failed flows as no route possible:"},
+            }
         
-    def fail(self,):
+    def fail(self,reassign_start,reassign_dest,weight):
         """Runs the failure of node."""
         self.node.failed = True
-        self.fail_attr.network.node_remove(self,)
+        self.fail_attr.network.node_remove(self,reassign_start,reassign_dest,weight)
         
-    def fill_stats(self,reroute,not_pos,avg_a,avg_b,avg_time_b,avg_time_a,start_rem,dest_rem,journey_rem,inter_node_rem):
-        """Populates the stats dict with the required information."""
-        self.stats['reroute']['num'] = reroute
-        self.stats['not_pos']['num'] = not_pos
-        self.stats['avg_a']['num'] = avg_a
-        self.stats['avg_b']['num'] = avg_b
-        self.stats['avg_time_a']['num'] = avg_time_a
-        self.stats['avg_time_b']['num'] = avg_time_b
-        self.stats['start_rem']['num'] = start_rem
-        self.stats['dest_rem']['num'] = dest_rem
-        self.stats['inter_node_rem']['num'] = inter_node_rem
-        self.stats['journey_rem']['num'] = journey_rem
+    #def fill_stats(self,reroute,not_pos,avg_a,avg_b,avg_time_b,avg_time_a,start_rem,dest_rem,journey_rem,inter_node_rem,failure_start_rem,failure_dest_rem,start_rem_no_effect,failed_inter_rem,reroute_start_fail,reroute_dest_fail,reroute_inter_fail):
+    def fill_stats(self,noroute,avg_a,avg_b,avg_time_b,avg_time_a,start_rem,dest_rem,journey_rem,inter_node_rem,failed_dest_rem,failed_start_rem,start_rem_no_effect,failed_inter_rem,reroute_start_fail,reroute_dest_fail,reroute_inter_fail,failed_flows,rerouted_flows,start_is_end):
 
+        """Populates the stats dict with the required information."""
+        #self.stats['avg_a']['num'] = avg_a
+        #self.stats['avg_b']['num'] = avg_b
+        #self.stats['avg_time_a']['num'] = avg_time_a
+        #self.stats['avg_time_b']['num'] = avg_time_b
+        self.stats['start_rem']['num'] = start_rem
+        self.stats['failure_start_rem']['num'] = failed_start_rem
+        self.stats['start_rem_no_effect']['num'] = start_rem_no_effect
+        self.stats['reroute_start_fail']['num'] = reroute_start_fail
+        self.stats['dest_rem']['num'] = dest_rem
+        self.stats['failure_dest_rem']['num'] = failed_dest_rem
+        self.stats['reroute_dest_fail']['num'] = reroute_dest_fail
+        self.stats['inter_node_rem']['num'] = inter_node_rem
+        self.stats['failed_inter_rem']['num'] = failed_inter_rem
+        self.stats['reroute_inter_fail']['num'] = reroute_inter_fail
+        self.stats['journey_rem']['num'] = journey_rem
+        self.stats['rerouted_flows']['num'] = rerouted_flows
+        self.stats['failed_flows']['num'] = failed_flows 
+        self.stats['start_is_end']['num'] = start_is_end
+        self.stats['noroute']['num'] = noroute
+        
     def print_stats(self,):
         """Prints the stats has in the stats dict."""
+        print '----------------------------'
         for key,val in self.stats.iteritems():
             print val['print_str'],val['num']
     
@@ -123,7 +145,7 @@ class Failures:
         everything."""
         self.failures.append(NodeFailure(self,node,time))
         
-    def check_fails(self,):
+    def check_fails(self,reassign_start,reassign_dest,weight):
         """Checks the failures in the list to see if any need to be run at the 
         current time."""
         fails = []
@@ -134,7 +156,7 @@ class Failures:
                     continue
                 if f.time >= self.network.time and f.time < self.network.time + self.network.tick_rate:
                     #run node/edge failure
-                    f.fail()
+                    f.fail(reassign_start,reassign_dest,weight)
                     f.done = True
                     fails.append(f)
         #for f in self.failures:
@@ -175,16 +197,20 @@ class FlowPoint:
         dist = math.hypot(bx-ax, by-ay)
         while dist < step:
             self.loc = self.edge.end_node.geom
-            if self.point ==0:
-                if self.waypoints[self.point].start_node in self.network.nodes:
-                    self.waypoints[self.point].start_node.add_flow(self.network.time)
+            if self.point == 0:
+                try:
+                    if self.waypoints[self.point].start_node in self.network.nodes:
+                        self.waypoints[self.point].start_node.add_flow(self.network.time)
+                except:
+                    print self.point
+                    print len(self.waypoints)
                     
             if self.waypoints[self.point].end_node in self.network.nodes:
                 self.waypoints[self.point].end_node.add_flow(self.network.time)
             self.waypoints[self.point].add_flow(self.network.time)
             self.point +=1
             
-            if self.point == len( self.waypoints):
+            if self.point == len( self.waypoints): 
                 self.finished = True
                 self.edge = None
                 return
@@ -370,23 +396,15 @@ class NclNetwork:
         try:
             route = nx.shortest_path(self.graph, source, target, WEIGHT)
         except KeyError:
-            print "A node for the flow is not in th network"
             try:
-                print 'source node =', self.graph[source]
+                print self.graph[source]
             except:
-                print 'could not find the source in G'
-                print 'source node =', self.graph[source]
+                return 'key error on source node'
             try:
-                print 'target node =',self.graph[target]
+                print self.graph[target]
             except:
-                'could not find target node in g'
-                print 'target node =',self.graph[target]
-            exit()
-        except:
-            #makes the error happen again so can see a print out
-            route = nx.shortest_path(self.graph, source, target, WEIGHT)
-            print 'MAJOR ERROR', source, target, route
-        
+                return 'key error on destination node'
+    
         waypoints =[]
         for j in range(len(route)-1):
             if self.__edges_class[(route[j],route[j+1])].start_node.failed or \
@@ -395,24 +413,21 @@ class NclNetwork:
             waypoints.append(self.__edges_class[(route[j],route[j+1])])
         return waypoints
     
-    def create_waypoints(self, start, end, WEIGHT='time'):
+    def create_waypoints(self, start, end, WEIGHT):
         """"This creates a set of waypoints for a person if a route is possible"""
         try:
             #find shortest path
             new_route = self._shortest_path(start, end, WEIGHT)
+            if new_route == 'key error on source node' or new_route == 'key error on destination node':
+                return new_route
+                
         except nx.NetworkXNoPath:
             #no route possible
             new_route = False
-        except nx.NetworkXError:
-            #in any other error - likley to be that it could not the node in the network - this is top of the list of bugs
-            print 'Could not find node in network. ORIGIN is: %s ; DEST is: %s'%(start.geom,end.geom)
-            new_route = False
-        except KeyError:
-            print 'Could not find start or end node in network!!!!'
-            new_route = False
+        
         return new_route
-    
-    def edge_remove(self,edgefail):
+        
+    def edge_remove(self,edgefail,reassign_start,reassign_dest,weight):
         """Updates all affected flow points when an edge is removed from the 
         network."""
         #find the edge to remove
@@ -442,7 +457,7 @@ class NclNetwork:
                             start_waypoint = self.flow_points[v].waypoints[0].start_node
                             end_waypoint = self.flow_points[v].waypoints[-1].end_node
                             #calcualte the new route, if one is possible
-                            new_route = self.create_waypoints(start_waypoint,end_waypoint)
+                            new_route = self.create_waypoints(start_waypoint,end_waypoint,weight)
                             if new_route == False:
                                 #if no route is possible - graph has more than one connected component
                                 self.flow_points.remove(self.flow_points[v])
@@ -450,6 +465,7 @@ class NclNetwork:
                                 noroute +=1
                             elif new_route == None:
                                 #this will only be used if an unknown error is generated in the create_waypoints function
+                                print "An error has occured in creating the waypoints"
                                 exit()
                             else:
                                 reroute+=1
@@ -466,7 +482,7 @@ class NclNetwork:
                             start_waypoint = self.flow_points[v].edge.start_node
                             end_waypoint = self.flow_points[v].waypoints[-1].end_node
                             #calcualte the new route, if one is possible
-                            new_route = self.create_waypoints(start_waypoint,end_waypoint)
+                            new_route = self.create_waypoints(start_waypoint,end_waypoint,weight)
                             if new_route == False:
                                 #if no route is possible - graph has more than one connected component
                                 self.flow_points.remove(self.flow_points[v])
@@ -474,6 +490,7 @@ class NclNetwork:
                                 noroute +=1
                             elif new_route == None:
                                 #this will only be used if an unknown error is generated in the create_waypoints function
+                                print "An error has occured in creating the waypoints!"
                                 exit()
                             else:
                                 reroute+=1
@@ -493,455 +510,283 @@ class NclNetwork:
         #print stats on the affect of the edge failure
         edgefail.fill_stats(reroute,noroute,avg_b,avg_a,avg_time_b,avg_time_a)
         
-    def node_remove(self, node_fail):
+  
+    def node_remove(self,node_fail,reassign_start, reassign_dest, weight):
         """
         """
-        
-        node_to_remove = node_fail.node._truncated_geom
-                
-        try:
-            self.graph.remove_node(node_to_remove)
-        except nx.NetworkXError:
-            print "----------------------\nCould not remove node with geom ", node_to_remove, " as if could not be found in the network\n---------------------"
-            
-        avg_b = self.average_journey_length()
-        avg_time_b = self.average_journey_length(length=False)
-        v = 0
-        reroute,noroute,start_rem,dest_rem,journey_rem,inter_node_rem = 0, 0, 0, 0, 0, 0
-        
-        #loop through all the flows
-        while v < len(self.flow_points):
-            #if flow has not completed its route
-            if self.flow_points[v].finished == False:
-                #start_waypoint = self.flow_points[v].waypoints[0].start_node
-                #end_waypoint =self.flow_points[v].waypoints[-1].end_node
-                
-                #if flow start node is the removed node
-                if self.flow_points[v].waypoints[0].start_node == node_fail.node:
-                    start_rem += 1
-                    
-                    #if the flow has started this is not a problem
-                    if self.flow_points[v].started == True: pass
-                        
-                    #if the flow has not started, find the nearest alternative node
-                    elif self.flow_points[v].started == False:
-                        new_start_node = self.nearest_node(node_fail.node)
-                        if new_start_node != self.flow_points[v].waypoints[-1].end_node:
-                            new_route = self.create_waypoints(new_start_node,self.flow_points[v].waypoints[-1].end_node)
-                            if new_route == False:
-                                #new route not possible
-                                noroute +=1
-                                self.flow_points.remove(self.flow_points[v])
-                                v -= 1
-                            else:
-                                #new route found
-                                reroute +=1
-                                self.flow_points[v] = FlowPoint(self,new_route,self.flow_points[v].start_time)
-                        else:
-                            self.flow_points.remove(self.flow_points[v])
-                            journey_rem +=1
-                            v -= 1
-            
-                #check if flow destination node has been removed
-                elif self.flow_points[v].waypoints[-1].end_node == node_fail.node:
-                    dest_rem += 1
-                    new_dest_node = self.nearest_node(node_fail.node)
-                    if new_dest_node != self.flow_points[v].waypoints[0].start_node:
-                        if self.flow_points[v].waypoints[0].start_node == node_fail.fail:
-                            print 'They match, why didnt they before!!!'
-                        else:
-                            new_route = self.create_waypoints(self.flow_points[v].waypoints[0].start_node,new_dest_node)
-                            if new_route == False:
-                                #new route not possible
-                                noroute +=1
-                                self.flow_points.remove(self.flow_points[v])
-                                v -= 1
-                            else:
-                                #new route found
-                                reroute +=1
-                                self.flow_points[v] = FlowPoint(self,new_route,self.flow_points[v].start_time)
-                    else:
-                        self.flow_points.remove(self.flow_points[v])
-                        journey_rem +=1
-                        v -= 1
-                #check all edges in routes
-                else:
-                    
-                    if self.flow_points[v].started == True:
-                        #the error is somewhere in this section i believe
-                        comp_route =[]
-                        #get waypoints - the points at either end of the edge the flow is on
-                        start_waypoint = self.flow_points[v].edge.start_node
-                        end_waypoint = self.flow_points[v].waypoints[-1].end_node
-                        
-                        #if the node where the flow last went through has been removed
-                        if start_waypoint== node_fail.node:
-                            #it is allowed to continue
-                            comp_route = [self.flow_points[v].edge]
-                            start_waypoint = self.flow_points[v].edge.start_node
-    
-                        #if the destination for the flow has been removed
-                        elif end_waypoint == node_fail.node:
-                            if start_waypoint == node_fail.node:
-                                #remove node
-                                journey_rem += 1
-                                self.flow_points.remove(self.flow_points[v])
-                                v -= 1
-                            else:
-                                dest_rem += 1
-                                new_end_waypoint = self.nearest_node(node_fail.node)     
-                                if start_waypoint == new_end_waypoint:
-                                    #if the closest to the end is the start-remove journey
-                                    journey_rem +=1
-                                    self.flow_points.remove(self.flow_points[v])
-                                    v -= 1
-                                else:
-                                    #if new end node found successfully
-                                    new_route = self.create_waypoints(start_waypoint,new_end_waypoint)
-                                    if new_route == False:
-                                        #if no route is possible
-                                        noroute +=1
-                                        self.flow_points.remove(self.flow_points[v])
-                                        v -= 1
-                                    else:
-                                        #if a new route has been found
-                                        reroute +=1
-                                        for part in new_route:
-                                            comp_route.append(part)
-                                        self.flow_points[v].waypoints = comp_route
-                                        self.flow_points[v].point = 0
-                        else:
-                            #need to find the position in the waypoints to check the rest of the route
-                            FOUND = False
-                            route = []; new_route=False
-                            for edg in self.flow_points[v].waypoints:
-                                if edg == self.flow_points[v].edge or FOUND == True:
-                                    FOUND = True
-                                    if edg.start_node == node_fail.node or edg.end_node == node_fail.node:
-                                        new_route = self.create_waypoints(self.flow_points[v].edge.start_node,self.flow_points[v].waypoints[-1].end_node)
-                                        if new_route == False:
-                                            #new route not possible
-                                            noroute +=1
-                                            self.flow_points.remove(self.flow_points[v])
-                                            v -= 1
-                                            break
-                                        else:
-                                            break
-                                            #new route found
-                                else:
-                                    route.append(edg)
-                            if new_route != False:
-                                for edge in new_route:
-                                    route.append(edge)
-                                reroute +=1                                           
-                                self.flow_points[v] = FlowPoint(self,route,self.flow_points[v].start_time)
-                            
-                                    
-                                        
-                    if self.flow_points[v].started == False:
-                        if node_fail.node == self.flow_points[v].waypoints[0].start_node:
-                            print 'They match, why didnt they before!!!'
-                        else:
-                            for edge in self.flow_points[v].waypoints:
-                                if edge.start_node == node_fail.node or edge.end_node == node_fail.node:
-                                    new_route = self.create_waypoints(self.flow_points[v].waypoints[0].start_node,self.flow_points[v].waypoints[-1].end_node)
-                                    if new_route == False:
-                                        #new route not possible
-                                        noroute +=1
-                                        self.flow_points.remove(self.flow_points[v])
-                                        v -= 1
-                                        break
-                                    else:
-                                        #new route found
-                                        reroute +=1
-                                        self.flow_points[v] = FlowPoint(self,new_route,self.flow_points[v].start_time)
-                                        break
-            #if node has not finished
-                #if node removed == start node
-                    #if node has already started pass
-                    #if node has not started
-                        #find a alternative start node
-                        #re_route
-                #elif node removed == dest node
-                    #if node has not finished
-                        #find an alternative end node
-                        #re-route
-                #else loop through all edges on route
-                     #if the flow has started
-                        #get the edge the flow is on
-                        #check that edges and that after for the node being removed
-                        #removed
-                    #if the flow has not started
-                        #loop though all edges in route and check for either node being removed
-                        #removed
-            v += 1
-
-        #calcaulate the average journey length
-        avg_a = self.average_journey_length()
-        avg_time_a = self.average_journey_length(length=False)
-        #print the stats on the effect of the ndoe being removed
-        node_fail.fill_stats(reroute,noroute,avg_a,avg_b,avg_time_b,avg_time_a,start_rem,dest_rem,journey_rem,inter_node_rem)
- 
- 
-    def node_remove_old(self,node_fail):
-        """Updates for all people their waypoints given the removal of a junction"""
         #remove a junction from the network
         node_to_remove =node_fail.node._truncated_geom
         
         try:
             self.graph.remove_node(node_to_remove)
         except nx.NetworkXError:
-            print "----------------------\nCould not remove node with geom ", node_to_remove, " as if could not be found in the network\n---------------------"
+            print "Could not remove node with geom ", node_to_remove, " as it could not be found in the network"
             
         avg_b = self.average_journey_length()
         avg_time_b = self.average_journey_length(length=False)
         v = 0
-        reroute,noroute,start_rem,dest_rem,journey_rem,inter_node_rem = 0, 0, 0, 0, 0, 0
+        noroute,start_rem,dest_rem,journey_rem,inter_node_rem,failed_start_rem,failed_dest_rem,start_rem_no_effect,failed_inter_rem,reroute_start_fail,reroute_dest_fail,reroute_inter_fail,start_is_end = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
         
         #loop through all the flows
         while v < len(self.flow_points):
 
             #if the flow has not finished yet        
             if self.flow_points[v].finished == False:
-
-                #if the flow has not started
-                if self.flow_points[v].started == False:
-
-                    #get start and end waypoints - don't need the others atm
-                    start_waypoint = self.flow_points[v].waypoints[0].start_node
-                    end_waypoint =self.flow_points[v].waypoints[-1].end_node
-                    
-                    #check if the node removed is the start node for the person
-                    if start_waypoint == node_fail.node:
-                        #find nearest node
-                        new_start_waypoint = self.nearest_node(node_fail.node)
-                        start_rem += 1
-                        #calculate new set of waypoints
-                        if new_start_waypoint == end_waypoint:
-                            #the closest node to the origin is the dest, so no route needed
-                            self.flow_points.remove(self.flow_points[v])
-                            journey_rem +=1
-                            v -= 1
-                        else:
-                            #find the new route thorugh the function
-                            new_route = self.create_waypoints(new_start_waypoint,end_waypoint)
-                            #actions depending on the result from the funcation called above
-                            if new_route == False:
-                                #if no route possible
-                                self.flow_points.remove(self.flow_points[v])
-                                v -= 1
-                                noroute +=1
-                            else:
-                                #if a new route has been found update for the flow
-                                reroute +=1
-                                self.flow_points[v] = FlowPoint(self,new_route,self.flow_points[v].start_time)
+                
+                #get start and end waypoints - don't need the others atm
+                start_junction = self.flow_points[v].waypoints[0].start_node
+                dest_junction =self.flow_points[v].waypoints[-1].end_node
+                
+                #check if flow origin has failed
+                if start_junction == node_fail.node:
+                    start_rem += 1
+                    #if the flow has started        
+                    if self.flow_points[v].started == True:
+                        #it will have passed away from this node already
+                        start_rem_no_effect += 1
+                        
+                    #if the flow has not started yet
+                    elif self.flow_points[v].started == False:
+                        #if check if nearest still active
+                        if reassign_start == True:
+                            #get next nearest possible start node
+                            new_start_junction = self.nearest_node(node_fail.node)
                             
-                    #check if the node removed is the destination for the flow
-                    elif end_waypoint == node_fail.node:
-                        dest_rem += 1
-                        new_end_waypoint = self.nearest_node(node_fail.node)     
-                        if start_waypoint == new_end_waypoint:
-                            #if closest junction to end same as start - no journey needed
-                            journey_rem +=1
-                            self.flow_points.remove(self.flow_points[v])
-                            v -= 1
-                        else:
-                            new_route = self.create_waypoints(start_waypoint,new_end_waypoint)
-                            if new_route == False:
-                                #new route not possible
-                                noroute +=1
+                            if new_start_junction == dest_junction:
+                                #remove flow if new start == dest or == failed
                                 self.flow_points.remove(self.flow_points[v])
+                                failed_start_rem += 1
+                                start_is_end += 1
                                 v -= 1
                             else:
-                                #new route found
-                                reroute +=1
-                                self.flow_points[v] = FlowPoint(self,new_route,self.flow_points[v].start_time)
-                    
-                    #check all waypoints on all flows for failed nodes
+                                new_route = self.create_waypoints(new_start_junction,dest_junction,weight)
+                                if new_route == False:
+                                    #new route not possible
+                                    noroute += 1
+                                    failed_start_rem += 1
+                                    self.flow_points.remove(self.flow_points[v])
+                                    v -= 1
+                                elif new_route == None or new_route == 'key error on source node' or new_route == 'key error on destnation node':
+                                    print "An error occured creating the waypoints! Reason for rerouting was due to failure of start node for flow. Error returned was %s" %new_route
+                                    exit()
+                                else:
+                                    #new route found
+                                    reroute_start_fail += 1
+                                    self.flow_points[v] = FlowPoint(self,new_route,self.flow_points[v].start_time)
+                        else:
+                            #remove flow
+                            self.flow_points.remove(self.flow_points[v])
+                            failed_start_rem += 1
+                            v -= 1
                     else:
-                        for edge in self.flow_points[v].waypoints:
-                            #search through all the waypoints
-                            #only need to check one of the origin or dest
-                            origin, dest = edge.start_node,edge.end_node
-                            if dest == node_fail.node:
-                                inter_node_rem += 1
-                                #if a macth is found, try to establish a new route for the person
-                                new_route = self.create_waypoints(start_waypoint,end_waypoint)
-                                if new_route == False:
-                                    #no new route possible
-                                    noroute +=1
-                                    self.flow_points.remove(self.flow_points[v])
-                                    v -= 1
-                                else:
-                                    #new route found
-                                    reroute +=1
-                                    self.flow_points[v] = FlowPoint(self,new_route,self.flow_points[v].start_time)
-                                break
-                            elif origin == node_fail.node:
-                                inter_node_rem += 1
-                                #if a macth is found, try to establish a new route for the person
-                                new_route = self.create_waypoints(start_waypoint,end_waypoint)
-                                if new_route == False:
-                                    #no new route possible
-                                    noroute +=1
-                                    self.flow_points.remove(self.flow_points[v])
-                                    v -= 1
-                                else:
-                                    #new route found
-                                    reroute +=1
-                                    self.flow_points[v] = FlowPoint(self,new_route,self.flow_points[v].start_time)
-                                break
-                    
-                #if the flow has already started, but it not finished yet
-                elif self.flow_points[v].started == True:
-                    
-                    comp_route =[]
-                    #get waypoints - the points at either end of the edge the flow is on
-                    start_waypoint = self.flow_points[v].edge.start_node
-                    end_waypoint = self.flow_points[v].waypoints[-1].end_node
-                    
-                    #if the node where the flow last went through has been removed
-                    if start_waypoint== node_fail.node:
-                        #it is allowed to continue
-                        comp_route = [self.flow_points[v].edge]
-                        start_waypoint = self.flow_points[v].edge.start_node
-
-                    #if the destination for the flow has been removed
-                    elif end_waypoint == node_fail.node:
-                        if start_waypoint == node_fail.node:
-                            #remove node
-                            journey_rem += 1
+                        #indicates a major error
+                        print "---\nMajor error! (c)\n---"
+                        exit()
+                #check if flow destination has failed
+                elif  dest_junction == node_fail.node:
+                    dest_rem += 1
+                    if reassign_dest == True:
+                        new_dest_junction = self.nearest_node(node_fail.node)
+                        if new_dest_junction == start_junction or new_dest_junction == node_fail.node:
+                            #remove flow if new dest == start or == failed
                             self.flow_points.remove(self.flow_points[v])
+                            failed_dest_rem += 1
+                            start_is_end += 1
                             v -= 1
                         else:
-                            dest_rem += 1
-                            new_end_waypoint = self.nearest_node(node_fail.node)     
-                            if start_waypoint == new_end_waypoint:
-                                #if the closest to the end is the start-remove journey
-                                journey_rem +=1
-                                self.flow_points.remove(self.flow_points[v])
-                                v -= 1
-                            else:
-                                #if new end node found successfully
-                                new_route = self.create_waypoints(start_waypoint,new_end_waypoint)
-                                if new_route == False:
-                                    #if no route is possible
-                                    noroute +=1
-                                    self.flow_points.remove(self.flow_points[v])
-                                    v -= 1
-                                else:
-                                    #if a new route has been found
-                                    reroute +=1
-                                    for part in new_route:
-                                        comp_route.append(part)
-                                    self.flow_points[v].waypoints = comp_route
+                            #if flow has started
+                            if self.flow_points[v].started == True:
+                                #get current edge and re-route from there
+                                
+                                if  new_dest_junction == self.flow_points[v].edge.start_node:
+                                    #if the nearest dest the end of the edge the flow is on
+                                    #only need to add the edge as the route
+                                                                        
+                                    self.flow_points[v].waypoints = [self.flow_points[v].edge]
                                     self.flow_points[v].point = 0
-                    
-                    #if the current edge the flow is on is unaffected
-                    #checks the waypoints on the rest of the route
-                    else:
-                        #loops through the waypoints
-                        for edge in self.flow_points[v].waypoints:
-                            #check node at either end of edge
-        
-                            origin, dest = edge.start_node,edge.end_node
-                           
-                            if origin == node_fail.node:
-                                if self.flow_points[v].started == True:
-                                    pass
-                                else:
-                                    inter_node_rem += 1
-                                    if start_waypoint == node_fail.node or end_waypoint == node_fail.node:
-                                        journey_rem +=1
+                                    
+                                elif new_dest_junction == self.flow_points[v].edge.start_node:
+                                    #flow has gone past destination
+                                    comp_route = [self.flow_points[v].edge]
+                                    
+                                    new_route = self.create_waypoints(self.flow_points[v].edge.end_node,new_dest_junction,weight)
+                                        
+                                    if new_route == False:
+                                        #new route not possible
+                                        noroute +=1
+                                        failed_dest_rem += 1
                                         self.flow_points.remove(self.flow_points[v])
                                         v -= 1
-                                    else:        
-                                        new_route = self.create_waypoints(start_waypoint,end_waypoint)
-                                        if new_route == False:
-                                            noroute +=1
-                                            self.flow_points.remove(self.flow_points[v])
-                                            v -= 1
-                                        else:
-                                            #if a new route has been found
-                                            reroute +=1
-                                            self.flow_points[v].waypoints = [self.flow_points[v].edge]
-                                            for part in new_route:
-                                                self.flow_points[v].waypoints.append(part)
-                                                self.flow_points[v].point = 0
-                                            break
+                                    elif new_route == None or new_route == 'key error on source node' or new_route == 'key error on destination node':
+                                        print "An error occured creating the waypoints! Rerouting as the flow destination had failed. Error returned was %s" %new_route
+                                        exit()
+                                    else:
+                                        reroute_dest_fail += 1
+                                        for item in new_route: comp_route.append(item)
+                                        self.flow_points[v].waypoints = comp_route
+                                        self.flow_points[v].point = 0
                                     
-                            elif dest == node_fail.node:
-                                inter_node_rem += 1
-                                try:
-                                    new_route = self.create_waypoints(edge.start_node,end_waypoint)
-                                except:
-                                    print "Error when re-routing a flow due to an intermediate failure."
-                                    new_route = self.create_waypoints(edge.start_node,end_waypoint)
-                                    
+                                else:
+                                
+                                    new_route = self.create_waypoints(self.flow_points[v].edge.start_node,new_dest_junction,weight)
+                                    if new_route == False:
+                                        #new route not possible
+                                        noroute +=1
+                                        failed_dest_rem += 1
+                                        self.flow_points.remove(self.flow_points[v])
+                                        v -= 1
+                                    elif new_route == None or new_route == 'key error on source node' or new_route == 'key error on destination node':
+                                        print "An error has occured creating waypoints! Rerouting as the flow destination has failed. Error returned was %s" %new_route
+                                        exit()
+                                    else:
+                                        reroute_dest_fail += 1
+                                        comp_route = []
+                                        for item in new_route: comp_route.append(item)
+                                        
+                                        self.flow_points[v].waypoints = comp_route
+                                        #this tells the flow where it is in its list of waypoints??
+                                        self.flow_points[v].point = 0
+                                
+                            #if flow has not started
+                            elif self.flow_points[v].started == False:
+                                #chose new dest and reroute
+                                new_route = self.create_waypoints(start_junction,new_dest_junction,weight)
                                 if new_route == False:
+                                    #new route not possible
                                     noroute +=1
+                                    failed_dest_rem += 1
                                     self.flow_points.remove(self.flow_points[v])
                                     v -= 1
+                                elif new_route == None or new_route == 'key error on source node' or new_route == 'key error on destination node':
+                                    print "An error occured creating the waypoints! Rerouting as dest node failed on inactive flow. Error returned was %s" %new_route
+                                    exit()
                                 else:
-                                    #if a new route has been found
-                                    reroute +=1
-                                    self.flow_points[v].waypoints = [self.flow_points[v].edge]
-                                    for part in new_route:
-                                        self.flow_points[v].waypoints.append(part)
-                                        self.flow_points[v].point = 0
-                                    break
+                                    #new route found
+                                    reroute_dest_fail += 1
+                                    self.flow_points[v] = FlowPoint(self,new_route,self.flow_points[v].start_time)
+                            else: #indicates a major error
+                                print "Major error! (a)"
+                                exit() 
+                    else:
+                        self.flow_points.remove(self.flow_points[v])
+                        failed_dest_rem += 1
+                        v -= 1
+                #check if part of the flow route has failed
+                else:
+                    #check the route for those which have already started
+                    if self.flow_points[v].started == True:
+                        #first check if the node at the end of the current edge has failed
+                        if self.flow_points[v].edge.end_node == node_fail.node:
+                            #the flow is on an edge with no node at its end, thus should be removed
+                            inter_node_rem += 1
+                            failed_inter_rem += 1
+                            noroute +=1
+                            self.flow_points.remove(self.flow_points[v])
+                            v -= 1
+                        elif self.flow_points[v].edge.start_node == node_fail.node:
+                            #the flow should not be affected by this but need to catch here
+                            pass
+                        else:
+                            #need to loop through from the edge identified as the current edge  
+                            check = False
+                            for edg in self.flow_points[v].waypoints:
+                                if edg == self.flow_points[v].edge and check == False:
+                                    check = True #allows to check only those edges which it still has to go over
+                                if check == True:
+                                    origin, dest = edg.start_node,edg.end_node
+                                    #check if edge start has failed
+                                    if origin == node_fail.node:
+                                        inter_node_rem += 1
+                                        comp_route = [self.flow_points[v].edge]
+                                        #if both nodes are the same
+                                        if self.flow_points[v].edge.end_node == self.flow_points[v].waypoints[-1].end_node:
+                                            pass
+                                        else:
+                                            new_route = self.create_waypoints(self.flow_points[v].edge.start_node,self.flow_points[v].waypoints[-1].end_node,weight)
+                                            
+                                            if new_route == False:
+                                                #new route not possible
+                                                noroute +=1
+                                                failed_inter_rem += 1
+                                                self.flow_points.remove(self.flow_points[v])
+                                                v -= 1
+                                            elif new_route == None or new_route == 'key error on source node' or new_route == 'key error on destination node':
+                                                print "An error occured creating the waypoints! Rerouting as node at begining og edge has failed. Error returned was %s" %new_route
+                                                exit()
+                                            else:
+                                                #new route found
+                                                reroute_inter_fail += 1
+                                                self.flow_points[v].waypoints = new_route
+                                                self.flow_points[v].point = 0
+                                            #stop this loop as failure found in flow route
+                                            break
+                                    #check if edge end has failed
+                                    elif dest == node_fail.node:
+                                        inter_node_rem += 1
+                                        comp_route = [self.flow_points[v].edge]
+                                        #if both nodes are the same
+                                        if self.flow_points[v].edge.end_node == self.flow_points[v].waypoints[-1].end_node:
+                                            pass
+                                        else:
+                                            #if the flow is on an edge, then need re-route from the end of the edge
+                                            new_route = self.create_waypoints(self.flow_points[v].edge.end_node,self.flow_points[v].waypoints[-1].end_node,weight)
+                                            if new_route == False:
+                                                #new route not possible
+                                                noroute +=1
+                                                failed_inter_rem += 1
+                                                self.flow_points.remove(self.flow_points[v])
+                                                v -= 1
+                                            elif new_route == None or new_route == 'key error on source node' or new_route == 'key error on destination node':
+                                                print "An error occured creating the waypoints! Rerouting as the end of an edge in an active route had failed. Error returned was %s" %new_route
+                                                exit()
+                                            else:
+                                                #new route found
+                                                reroute_inter_fail += 1
+                                                for item in new_route: comp_route.append(item)
+                                                self.flow_points[v].waypoints = comp_route
+                                                self.flow_points[v].point = 0
+                                        #stop looping as failure found in flow route
+                                        break
+                                    else: pass
+                                else: pass
+                    #check the route for those which have not started yet
+                    elif self.flow_points[v].started == False:
+                        
+                        for edge in self.flow_points[v].waypoints:
+                            origin, dest = edge.start_node,edge.end_node
+                            #check if edge start or end has failed
+                            if origin == node_fail.node or dest == node_fail.node:
+                                inter_node_rem += 1
+                                new_route = self.create_waypoints(self.flow_points[v].waypoints[0].start_node,self.flow_points[v].waypoints[-1].end_node,weight)
+                                    
+                                if new_route == False:
+                                    #new route not possible
+                                    noroute +=1
+                                    failed_inter_rem += 1
+                                    self.flow_points.remove(self.flow_points[v])
+                                    v -= 1
+                                elif new_route == None or new_route == 'key error on source node' or new_route == 'key error on destination node':
+                                    print "An error has occured creating waypoints. Rerouting a stationary flow due to failure in route. Error returned was %s" %new_route
+                                    exit()
+                                else:
+                                    reroute_inter_fail += 1
+                                    self.flow_points[v] = FlowPoint(self,new_route,self.flow_points[v].start_time)
+                                #stop looping as failure found in flow route
+                                break
+                            else: pass
+                    else: 
+                        print "Major error! (b)"
+                        exit()     
             v += 1
         
         #calcaulate the average journey length
         avg_a = self.average_journey_length()
         avg_time_a = self.average_journey_length(length=False)
         #print the stats on the effect of the ndoe being removed
-        node_fail.fill_stats(reroute,noroute,avg_a,avg_b,avg_time_b,avg_time_a,start_rem,dest_rem,journey_rem,inter_node_rem)
-        
-        """Below stops the errors which occur sometimes -some routes contain 
-        the failed node for some reason still.
-        Should only be a temp fix!!!! Not recorded in stats as a result."""        
-        """
-        #check flows for failed node - no paths should have it in i think
-        v = 0
-        while v < len(self.flow_points):
-            if self.flow_points[v].finished == True:
-                break
-            start_waypoint = self.flow_points[v].waypoints[0].start_node
-            end_waypoint = self.flow_points[v].waypoints[-1].end_node
-            
-            if start_waypoint == node_fail.node:
-                if self.flow_points[v].started == False:
-                    self.flow_points.remove(self.flow_points[v])
-                    errors_caught += 1
-                    v -= 1
-            elif end_waypoint == node_fail.node:
-                if self.flow_points[v].finished == False:
-                    self.flow_points.remove(self.flow_points[v])
-                    errors_caught += 1
-                    v -= 1
-            else:
-                for edge in self.flow_points[v].waypoints:
-                    origin, dest = edge.start_node,edge.end_node
-                    if origin == node_fail.node:
-                        if self.flow_points[v].started == True:
-                            pass
-                        else:
-                            #print "Inter origin waypoint = failed node;",self.flow_points[v].started, ". Finshed:", self.flow_points[v].finished
-                            self.flow_points.remove(self.flow_points[v])
-                            errors_caught += 1
-                            v -= 1
-                    elif dest == node_fail.node:
-                        #print "Inter dest waypoint = failed node;", self.flow_points[v].started, ". Finshed:", self.flow_points[v].finished
-                        self.flow_points.remove(self.flow_points[v])
-                        errors_caught += 1
-                        v -= 1
-            v+=1
-        
-        if errors_caught > 0:
-            print "------ Potential errors caught:",errors_caught,"------"
-            exit()
-        """ 
+        failed_flows = failed_dest_rem+failed_start_rem+failed_inter_rem
+        rerouted_flows = reroute_start_fail+reroute_dest_fail+reroute_inter_fail
+        node_fail.fill_stats(noroute,avg_a,avg_b,avg_time_b,avg_time_a,start_rem,dest_rem,journey_rem,inter_node_rem,failed_dest_rem,failed_start_rem,start_rem_no_effect,failed_inter_rem,reroute_start_fail,reroute_dest_fail,reroute_inter_fail,failed_flows,rerouted_flows,start_is_end)
+
         
     def nearest_node(self,node):
         """Returns the nearest junction in the network to the one removed."""

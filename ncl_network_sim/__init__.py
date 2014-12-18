@@ -124,7 +124,7 @@ def build_network(shp_file, speed_att=None,default_speed=1, length_att=None,dp=1
     edges = Edges(edges,edge_geom_lookup_dict)
     print '---------------------'
     print 'nodes in network:',orig_G.number_of_nodes()
-    print 'station nodes:',len(proper_nodes.nodes)
+    print 'junction nodes:',len(proper_nodes.nodes)
     print '---------------------'
     return NclNetwork(orig_G, proper_nodes, edges, _bbox)
 
