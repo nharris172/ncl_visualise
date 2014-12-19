@@ -4,19 +4,14 @@ import datetime
 import random
 from ncl_network_sim import tools
 import os 
-"""
-To do/ideas:
--Need to look at adding edge failure visualisation to the geo failure method
--In dense networks, changing colours of edges might be better than line 
-thickness.
--For geo failure, produce stats on the accumulative effect rather/as well as
-for the individual failures.
-
-"""
 
 def run_sim():
-    net_source_shpfile = True
     
+    
+    #-------------------------------------------------------------------------#
+    #network based variables
+    
+    net_source_shpfile = True
     #attribute name in shapefile/datatable - set as None if they are not in the shapefile
     length_att = 'length' #None
     speed_att = 'speed' #None #speed should be in meters per second, otherwise results may be miss-representative
@@ -27,19 +22,118 @@ def run_sim():
     #shpfile_name = "leeds_m_a_b_w_travel_time"
     #shpfile_name = "uk_internal_routes"
     #shpfile_name = "london_dlr_lines"
+    db_parameters = {'dbname':'lightrail',
+                     'net_name':'tyne_wear_metro_geo_w_shortcuts',
+                     'host':'localhost','user':'postgres','port':'5433','password':'aaSD2011'}
+                     
+    #------------------------------------------------------------------------------
+    #visualisation varaibles
+    
+    #year, month, day, hour
+    STARTTIME = datetime.datetime(2014,2,2,7,00) #set start start to 7 this morning
+    SECONDS_PER_FRAME = 30 #set what the frame interval equals in realtime
+    
+    #factors at which the nodes/edges are scaled at based on their flow value
+    NODE_SCALE_FACTOR = 2
+    EDGE_SCALE_FACTOR = 5
+
+    #sizes generic
+    FLOW_SIZE = 2 #active flow size
+    FAILED_NODE_SIZE = 4 #size of failed nodes
+    FAILED_EDGE_SIZE = 2 #width of failed edges
+    MIN_EDGE_SIZE = 1 #minimum width of an active edge
+    MIN_NODE_SIZE = 2 #minimum size of active node
+    
+    #size of failure visualisation for nodes and edges
+    NODE_FAILURE_SCALE_RANGE = 20
+    EDGE_FAILURE_SCALE_RANGE = 50
+    
+    #active colours for flows, nodes and edges
+    FLOW_COLOUR = (255,255,255) #white
+    NODE_ACTIVE_COLOUR = (0,153,0) #green
+    EDGE_ACTIVE_COLOUR = (124,255,91) #green        
+    
+    #failure colours
+    NODE_FAILED_COLOUR = (255,0,0) #red
+    EDGE_FAILED_COLOUR = (255,100,0) #orange 
+    GEO_FAILURE_COLOUR = (0,0,255) #blue
+    
+    #colours generic
+    BACKGROUND_COLOUR = (0,0,255)
+    LAND_COLOUR = (0,0,0)
+    BUILDINGS_COLOUR = (92,92,92)
+    RIVER_COLOUR = (0,0,255)
+    #------------------------------------------------------------------------------
+    #flow variables
+    
+    RANDOM_FLOWS = False
+    #file paths for flow origin/destination areas and flow data csv
+    ZONES = "C:\\Users\\Craig\\GitRepo\\ncl_visualise\\static_shps\\tyne_wear_msoas.shp"
+    FLOW_CSV = "C:\\Users\\Craig\\GitRepo\\ne_cummute_by_car_msoa_edited.csv"    
+    #for random flows        
+    NUMBER_OF_FLOWS = 1000
+    #for the routing of all flows
+    WEIGHT = 'time'
+    
+    HOURS_TO_RUN_FOR = 0.5 #time which start times are spread over    
+    FLOW_COUNT_TIME = [0,10]#HOURS,MINUTES
+    
+    #outputs
+    PRINT_STATS = False
+    RECORD = False
+    #FILE_PATH = "C:\\Users\\Craig\\network_vis_tool\\vis_sim\\temp_%s-%s-%s.jpg"
+    FILE_PATH = "C:\\Users\\Craig\\network_vis_tool\\vis_sim - TW\\temp%s.jpg"
+    if RECORD == True: META_FILE = open("C:\\Users\\Craig\\network_vis_tool\\vis_sim - TW\\metadata.txt","w")
+
+    #------------------------------------------------------------------------------
+    #Variables to tailor failure analysis
+
+    MANUAL = False #define times and failure methods (set as True)
+    RANDOM_TIME = True #if failure times to be randomly generated (set as True)
+    TIME_INTERVALS = None #set an interval(mins) between failures.
+    NUMBER_OF_FAILURES = 5 #the number of failures which are to occur.
+    
+    RANDOM_F = False
+    TARGETED = True #if selecting nodes by their flow value - will also add degree - may be able to get rid of this
+    FLOW = True #removes the node which the greatest number of flows have passed through in the last 10mins for example
+    DEGREE = False #does not yet work
+    NODE_EDGE_RANDOM = 'NODE_EDGE' #should be NODE, EDGE or NODE_EDGE
+   
+    #geo failure
+    GEO_FAILURE = False
+    SHP_FILE = "C:\\Users\\Craig\\GitRepo\\ncl_visualise\\static_shps\\PiP\\polygon_coastal_flood_eg.shp"
+ 
+    #junction re-assignment - only checks the closest as an alternative
+    REASSIGN_START = True
+    REASSIGN_DEST = True
+    
+    #-----------------------------------------------------------------------------
+    #for non targeted approach's
+    EDGE_FAILURE_TIME = [
+            datetime.datetime(2014,2,2,7,45)
+            ]        
+    NODE_FAILURE_TIME = [
+            datetime.datetime(2014,2,2,7,40),
+            ]
+    
+    #for targeted appraoch (nodes only)
+    TARGETED_FAILURE_TIMES = [
+            #datetime.datetime(2014,2,2,7,5),
+            ]
+    #is running a geo failure            
+    GEO_F_TIME = [
+        datetime.datetime(2014,2,2,7,04)  
+        ]
+    #-----------------------------------------------------------------------------
+    #build network
     path =  os.path.dirname(os.path.realpath(__file__))
     if net_source_shpfile == True:
         
         #print os.path.join(path,"networks","%s.shp" % shpfile_name) == '/home/neil/git_rep/ncl_visualise/networks/metro_geo_rail.shp'
         built_network = ncl_network_sim.build_network(os.path.join(path,"networks","%s.shp" % shpfile_name) , speed_att=speed_att, default_speed=default_speed, length_att=length_att)
     elif net_source_shpfile == False:
-        host = 'localhost'; user = 'postgres'; port = '5433'
-        password = 'aaSD2011'
-        dbname = 'lightrail'
-        #net_name = 'tyne_wear_metro'
-        net_name = 'tyne_wear_metro_geo_w_shortcuts'
-        conn = "PG: host='%s' dbname='%s' user='%s' password='%s' port='%s'" % (host, dbname, user, password, port)
-        built_network = ncl_network_sim.build_net_from_db(conn, net_name,speed_att=speed_att,default_speed=default_speed, length_att=length_att)
+        conn = "PG: host='%s' dbname='%s' user='%s' password='%s' port='%s'" % (db_parameters['host'], db_parameters['dbname'], db_parameters['user'], db_parameters['password'], db_parameters['port'])
+        built_network = ncl_network_sim.build_net_from_db(conn, db_parameters['net_name'],speed_att=speed_att,default_speed=default_speed, length_att=length_att)
     
     #------------------------------------------------------------------------------
     junctions = built_network.nodes
@@ -51,24 +145,24 @@ def run_sim():
     buffer_height = (TOP-BOTTOM)/20
     WINDOWWIDTH = 800
     canvas = ncl_visualize.Canvas((LEFT-buffer_width,TOP+buffer_height),(RIGHT+buffer_width,BOTTOM-buffer_height) ,WINDOWWIDTH)
-    canvas.set_background_color((0,0,255))
+    canvas.set_background_color(BACKGROUND_COLOUR)
     
     #------------------------------------------------------------------------------
     #Reads in shapefile for land, and converts them to screen coordinates
     #canvas.LoadStatic.Polygon("static_shps/land.shp",color=(0,0,0))
-    canvas.LoadStatic.Polygon(os.path.join(path,"static_shps","land.shp"),color=(0,0,0))
+    canvas.LoadStatic.Polygon(os.path.join(path,"static_shps","land.shp"),LAND_COLOUR)
     #canvas.LoadStatic.Polygon("static_shps/leeds_background.shp",color=(0,0,0))
     #canvas.LoadStatic.Polygon("static_shps/greatbritain",color=(0,0,0))
     #canvas.LoadStatic.Polygon("static_shps/london_background.shp",color=(0,0,0))
     
     #Reads in shapefile for river, and converts them to screen coordinates
-    canvas.LoadStatic.Polygon(os.path.join(path,"static_shps","river_buffer.shp"),color=(0,0,255))
+    canvas.LoadStatic.Polygon(os.path.join(path,"static_shps","river_buffer.shp"),RIVER_COLOUR)
     #canvas.LoadStatic.Polygon("static_shps/leeds_river_buffer.shp",color=(0,0,255))
     #canvas.LoadStatic.Polygon("static_shps/london_rivers.shp",color=(0,0,255)) 
     
     #Reads in shapefile for buildings, and converts them to screen coordinates
     #canvas.LoadStatic.Polygon("static_shps/buildings.shp",color=(92,92,92))
-    canvas.LoadStatic.Polygon(os.path.join(path,"static_shps","buildings.shp"),color=(92,92,92))
+    canvas.LoadStatic.Polygon(os.path.join(path,"static_shps","buildings.shp"),BUILDINGS_COLOUR)
     #canvas.LoadStatic.Polygon("static_shps/tw_urban_areas.shp",color=(92,92,92))
     #canvas.LoadStatic.Polygon("static_shps/Leeds_roads_buildings.shp",color=(92,92,92))
     #canvas.LoadStatic.Polygon("static_shps/greatbritain",color=(92,92,92))
@@ -77,35 +171,12 @@ def run_sim():
     #SHP_FILE = "C:\\Users\\Craig\\Dropbox\\polygon_multiple_failures_testing.shp"
     #canvas.LoadStatic.Polygon(SHP_FILE,color=(92,92,92))
     
-    #------------------------------------------------------------------------------
-    #year, month, day, hour
-    STARTTIME = datetime.datetime(2014,2,2,7,00) #set start start to 7 this morning
-    SECONDS_PER_FRAME = 30 #set what the frame interval equals in realtime 
-    
-    #simulation variables
-    RANDOM_FLOWS = False
-    #file paths for flow origin/destination areas and flow data csv
-    ZONES = "C:\\Users\\Craig\\GitRepo\\ncl_visualise\\static_shps\\tyne_wear_msoas.shp"
-    FLOW_CSV = "C:\\Users\\Craig\\GitRepo\\ne_cummute_by_car_msoa_edited.csv"    
-    #for random flows        
-    NUMBER_OF_FLOWS = 1000
-
-    HOURS_TO_RUN_FOR = 0.5 #time which start times are spread over
-    WEIGHT = 'time'
-    FLOW_COUNT_TIME = [0,10]#HOURS,MINUTES
-    
-    #outputs
-    PRINT_STATS = False
-    RECORD = False
-    #FILE_PATH = "C:\\Users\\Craig\\network_vis_tool\\vis_sim\\temp_%s-%s-%s.jpg"
-    FILE_PATH = "C:\\Users\\Craig\\network_vis_tool\\vis_sim - TW\\temp%s.jpg"
-    if RECORD == True: META_FILE = open("C:\\Users\\Craig\\network_vis_tool\\vis_sim - TW\\metadata.txt","w")
-    
+   
     #------------------------------------------------------------------------------
     
     #this creates the random flows
     routes_not_pos = 0
-    if RANDOM_FLOWS:
+    if RANDOM_FLOWS:2
         for i in range(NUMBER_OF_FLOWS):
             #ensure end doesn't equal start
             random.shuffle(junctions)
@@ -129,31 +200,8 @@ def run_sim():
     if RECORD: tools.write_metadata(META_FILE,net_source_shpfile,shpfile_name,length_att,
                          speed_att,default_speed,STARTTIME,SECONDS_PER_FRAME,
                          NUMBER_OF_FLOWS,routes_not_pos,HOURS_TO_RUN_FOR,WEIGHT,FLOW_COUNT_TIME)
-    
+          
     #------------------------------------------------------------------------------
-    #Variables to tailor failure analysis
-    MANUAL = False #define times and failure methods (set as True)
-    RANDOM_TIME = True #if failure times to be randomly generated (set as True)
-    TIME_INTERVALS = None #set an interval(mins) between failures.
-    NUMBER_OF_FAILURES = 5 #the number of failures which are to occur.
-    
-    RANDOM_F = False
-    TARGETED = True #if selecting nodes by their flow value - will also add degree - may be able to get rid of this
-    FLOW = True #removes the node which the greatest number of flows have passed through in the last 10mins for example
-    DEGREE = False #does not yet work
-    NODE_EDGE_RANDOM = 'NODE_EDGE' #should be NODE, EDGE or NODE_EDGE
-   
-    #geo failure
-    GEO_FAILURE = False
-    SHP_FILE = "C:\\Users\\Craig\\GitRepo\\ncl_visualise\\static_shps\\PiP\\polygon_coastal_flood_eg.shp"
- 
-    #junction re-assignment - only checks the closest as an alternative
-    REASSIGN_START = True
-    REASSIGN_DEST = True
-       
-    #------------------------------------------------------------------------------
-    
-    
     random.shuffle(net_edges)
     EDGE_FAILURE_TIME=None;NODE_FAILURE_TIME=None;FAILURE_TIMES=None
     
@@ -169,41 +217,14 @@ def run_sim():
     elif MANUAL == True:
         EDGE_FAILURE_TIME=None;NODE_FAILURE_TIME=None;TARGETED_FAILURE_TIMES=None;RANDOM_FAILURE_TIMES=None
         if TARGETED == False:
-            #manual time setting, random component selection
-            #year, month, day, hour, minut
-            EDGE_FAILURE_TIME = [
-            datetime.datetime(2014,2,2,7,45)
-            ]        
-            NODE_FAILURE_TIME = [
-            datetime.datetime(2014,2,2,7,40),
-            ]
-            
             tools.manual_random_edges(EDGE_FAILURE_TIME,net_edges,built_network)
             tools.manual_random_edges(NODE_FAILURE_TIME,junctions,built_network)
-             
-        elif TARGETED == True:
-            TARGETED_FAILURE_TIMES = [
-            #datetime.datetime(2014,2,2,7,5),
-            #datetime.datetime(2014,2,2,7,11),
-            #datetime.datetime(2014,2,2,7,14),
-            #datetime.datetime(2014,2,2,7,32),
-            #datetime.datetime(2014,2,2,7,33),
-            #datetime.datetime(2014,2,2,7,43),
-            #datetime.datetime(2014,2,2,7,49),
-            #datetime.datetime(2014,2,2,7,53),
-            #datetime.datetime(2014,2,2,7,28),
-            #datetime.datetime(2014,2,2,7,15),
-            ]
-    GEO_F_TIME = []
-    if GEO_FAILURE == True:
-        GEO_F_TIME = [
-        datetime.datetime(2014,2,2,7,04)  
-        ]
     
     if RECORD: tools.write_failure_data(META_FILE,MANUAL,RANDOM_TIME,TIME_INTERVALS,NUMBER_OF_FAILURES,TARGETED,
                                  NODE_EDGE_RANDOM,FLOW,DEGREE,FAILURE_TIMES,EDGE_FAILURE_TIME,NODE_FAILURE_TIME)
     
     #------------------------------------------------------------------------------
+    #run simulation
     built_network.time_config(STARTTIME,SECONDS_PER_FRAME)
     quit = False
     done = False
@@ -237,7 +258,7 @@ def run_sim():
         #load polygon onto map for visualisation
         for ftime in GEO_F_TIME:
             if ftime == built_network.time:
-                canvas.LoadStatic.Polygon(SHP_FILE,color=(0,0,255))
+                canvas.LoadStatic.Polygon(SHP_FILE,GEO_FAILURE_COLOUR)
      
         #check if any failures are due and reroute flows
         fails = built_network.Failures.check_fails(REASSIGN_START,REASSIGN_DEST,WEIGHT)
@@ -246,14 +267,14 @@ def run_sim():
         for failure in fails:
             if failure:
                 if failure.edge:
-                    for i in range(1,50):
+                    for i in range(1,EDGE_FAILURE_SCALE_RANGE):
                         #Terprint failure.statsrible failure animation
-                        canvas.draw_line(failure.edge.geom,(255,100,0),i)
+                        canvas.draw_line(failure.edge.geom,EDGE_FAILED_COLOUR,i)
                         canvas.tick()
                 if failure.node:
-                    for i in range(1,20):
+                    for i in range(1,NODE_FAILURE_SCALE_RANGE):
                         #Terprint failure.statsrible failure animation
-                        canvas.draw_point(failure.node.geom,(255,0,0),i)
+                        canvas.draw_point(failure.node.geom,NODE_FAILED_COLOUR,i)
                         canvas.tick()
                         
                 #print stats following the failure
@@ -272,32 +293,28 @@ def run_sim():
             #get flows from last 10 minutes
             num_flows = edge.get_flows(hours=FLOW_COUNT_TIME[0],mins=FLOW_COUNT_TIME[1])
             if not edge.failed:
-                color = (124,255,91)
                 if num_flows:
-                    weight = int(max(1,num_flows/5))
-                    canvas.draw_line(edge.geom,color,weight)
+                    weight = int(max(MIN_EDGE_SIZE,num_flows/EDGE_SCALE_FACTOR))
+                    canvas.draw_line(edge.geom,EDGE_ACTIVE_COLOUR,weight)
             else:
-                color = (255,100,0)
-                canvas.draw_line(edge.geom,color,2)
+                canvas.draw_line(edge.geom,EDGE_FAILED_COLOUR,FAILED_EDGE_SIZE)
         
         #draws network junctions that people have been through their size is changed lateron
         for node in built_network.nodes:
             if not node.failed:
-                color = (0,153,0)
                 
                 num_flows = node.get_flows(hours=FLOW_COUNT_TIME[0],mins=FLOW_COUNT_TIME[1])
                 
                 if num_flows:
-                    weight = int(max(2,num_flows/5))
-                    canvas.draw_point(node.geom,color,weight)
+                    weight = int(max(MIN_NODE_SIZE,num_flows/NODE_SCALE_FACTOR))
+                    canvas.draw_point(node.geom,NODE_ACTIVE_COLOUR,weight)
             else:
-                color = (255,0,0)
-                canvas.draw_point(node.geom,color,4)   
+                canvas.draw_point(node.geom,NODE_FAILED_COLOUR,FAILED_NODE_SIZE)   
         
         #draws each flow point at its location if it has started and not finished
         for fp in built_network.flow_points:
             if fp.started and not fp.finished:
-                canvas.draw_point(fp.loc,(255,255,255),2)         
+                canvas.draw_point(fp.loc,FLOW_COLOUR,FLOW_SIZE)         
         canvas.annotate(built_network.time.time(),'BOTTOM_LEFT')
     
         #increase time by frame rate

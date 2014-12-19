@@ -515,16 +515,20 @@ class NclNetwork:
         """
         """
         #remove a junction from the network
-        node_to_remove =node_fail.node._truncated_geom
+        node_to_remove = node_fail.node._truncated_geom
         
+        #remove the failed node from the network
         try:
             self.graph.remove_node(node_to_remove)
         except nx.NetworkXError:
             print "Could not remove node with geom ", node_to_remove, " as it could not be found in the network"
-            
+        
+        #calculate the average journey lengths/times
         avg_b = self.average_journey_length()
         avg_time_b = self.average_journey_length(length=False)
-        v = 0
+        
+        #create parameters to store flow statistics
+        v = 0       
         noroute,start_rem,dest_rem,journey_rem,inter_node_rem,failed_start_rem,failed_dest_rem,start_rem_no_effect,failed_inter_rem,reroute_start_fail,reroute_dest_fail,reroute_inter_fail,start_is_end = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
         
         #loop through all the flows
@@ -533,13 +537,13 @@ class NclNetwork:
             #if the flow has not finished yet        
             if self.flow_points[v].finished == False:
                 
-                #get start and end waypoints - don't need the others atm
+                #get start and end waypoints
                 start_junction = self.flow_points[v].waypoints[0].start_node
                 dest_junction =self.flow_points[v].waypoints[-1].end_node
                 
                 #check if flow origin has failed
                 if start_junction == node_fail.node:
-                    start_rem += 1
+                    start_rem += 1 #count flow as start being removed
                     #if the flow has started        
                     if self.flow_points[v].started == True:
                         #it will have passed away from this node already
@@ -547,9 +551,9 @@ class NclNetwork:
                         
                     #if the flow has not started yet
                     elif self.flow_points[v].started == False:
-                        #if check if nearest still active
+                        #does the user want to assume the flow will reroute to the nearest node
                         if reassign_start == True:
-                            #get next nearest possible start node
+                            #get nearest possible junction as a new start node
                             new_start_junction = self.nearest_node(node_fail.node)
                             
                             if new_start_junction == dest_junction:
@@ -559,6 +563,7 @@ class NclNetwork:
                                 start_is_end += 1
                                 v -= 1
                             else:
+                                #create a set of waypoints for flow
                                 new_route = self.create_waypoints(new_start_junction,dest_junction,weight)
                                 if new_route == False:
                                     #new route not possible
@@ -567,6 +572,7 @@ class NclNetwork:
                                     self.flow_points.remove(self.flow_points[v])
                                     v -= 1
                                 elif new_route == None or new_route == 'key error on source node' or new_route == 'key error on destnation node':
+                                    #catch error and stop simulation
                                     print "An error occured creating the waypoints! Reason for rerouting was due to failure of start node for flow. Error returned was %s" %new_route
                                     exit()
                                 else:
@@ -574,19 +580,24 @@ class NclNetwork:
                                     reroute_start_fail += 1
                                     self.flow_points[v] = FlowPoint(self,new_route,self.flow_points[v].start_time)
                         else:
-                            #remove flow
+                            #remove flow as user requested origins not to be reassigned
                             self.flow_points.remove(self.flow_points[v])
                             failed_start_rem += 1
                             v -= 1
                     else:
-                        #indicates a major error
+                        #indicates a major error - stop simulation
                         print "---\nMajor error! (c)\n---"
                         exit()
+                        
                 #check if flow destination has failed
                 elif  dest_junction == node_fail.node:
+                    #record that a flow has had it destination removed
                     dest_rem += 1
+                    #if the user wants the flow to be rerouted to the nearest destination
                     if reassign_dest == True:
+                        #find nearest junction to the failed
                         new_dest_junction = self.nearest_node(node_fail.node)
+                        
                         if new_dest_junction == start_junction or new_dest_junction == node_fail.node:
                             #remove flow if new dest == start or == failed
                             self.flow_points.remove(self.flow_points[v])
@@ -596,19 +607,20 @@ class NclNetwork:
                         else:
                             #if flow has started
                             if self.flow_points[v].started == True:
-                                #get current edge and re-route from there
-                                
-                                if  new_dest_junction == self.flow_points[v].edge.start_node:
-                                    #if the nearest dest the end of the edge the flow is on
+
+                                #check new dest is not part of the edge the flow is currently on                                
+                                if  new_dest_junction == self.flow_points[v].edge.end_node:
+                                    #if the nearest dest is the end of the edge the flow is on
                                     #only need to add the edge as the route
-                                                                        
                                     self.flow_points[v].waypoints = [self.flow_points[v].edge]
                                     self.flow_points[v].point = 0
                                     
                                 elif new_dest_junction == self.flow_points[v].edge.start_node:
-                                    #flow has gone past destination
+                                    #flow has gone past new destiantion as its the beginning of the edge its currently on
+                                    #need to find a new route back to this node
+                                    #add to the new route the current edge its on
                                     comp_route = [self.flow_points[v].edge]
-                                    
+                                    #find new route from the end of the current edge to the eestination, the beginning of teh current edge
                                     new_route = self.create_waypoints(self.flow_points[v].edge.end_node,new_dest_junction,weight)
                                         
                                     if new_route == False:
@@ -618,16 +630,20 @@ class NclNetwork:
                                         self.flow_points.remove(self.flow_points[v])
                                         v -= 1
                                     elif new_route == None or new_route == 'key error on source node' or new_route == 'key error on destination node':
+                                        #if an error is returned from the rerouting. Report and exit.
                                         print "An error occured creating the waypoints! Rerouting as the flow destination had failed. Error returned was %s" %new_route
                                         exit()
                                     else:
+                                        #route found to new destination
                                         reroute_dest_fail += 1
+                                        #append new route to the existing route - the current edge only
                                         for item in new_route: comp_route.append(item)
                                         self.flow_points[v].waypoints = comp_route
                                         self.flow_points[v].point = 0
                                     
                                 else:
-                                
+                                    #else the new destination is not on the edge the flow is on or its original source
+                                    #generate new route current edge start and new destination
                                     new_route = self.create_waypoints(self.flow_points[v].edge.start_node,new_dest_junction,weight)
                                     if new_route == False:
                                         #new route not possible
@@ -636,15 +652,16 @@ class NclNetwork:
                                         self.flow_points.remove(self.flow_points[v])
                                         v -= 1
                                     elif new_route == None or new_route == 'key error on source node' or new_route == 'key error on destination node':
+                                        #error returned finding new route. Report and exit.
                                         print "An error has occured creating waypoints! Rerouting as the flow destination has failed. Error returned was %s" %new_route
                                         exit()
                                     else:
+                                        #new route found to new dest
                                         reroute_dest_fail += 1
                                         comp_route = []
                                         for item in new_route: comp_route.append(item)
                                         
                                         self.flow_points[v].waypoints = comp_route
-                                        #this tells the flow where it is in its list of waypoints??
                                         self.flow_points[v].point = 0
                                 
                             #if flow has not started
@@ -658,19 +675,23 @@ class NclNetwork:
                                     self.flow_points.remove(self.flow_points[v])
                                     v -= 1
                                 elif new_route == None or new_route == 'key error on source node' or new_route == 'key error on destination node':
+                                    #error returned finding new route. Report and exit.
                                     print "An error occured creating the waypoints! Rerouting as dest node failed on inactive flow. Error returned was %s" %new_route
                                     exit()
                                 else:
                                     #new route found
                                     reroute_dest_fail += 1
                                     self.flow_points[v] = FlowPoint(self,new_route,self.flow_points[v].start_time)
-                            else: #indicates a major error
+                            else:
+                                #indicates a major error
                                 print "Major error! (a)"
                                 exit() 
                     else:
+                        #remove flow as user requested no reassignment of destinations    
                         self.flow_points.remove(self.flow_points[v])
                         failed_dest_rem += 1
                         v -= 1
+                        
                 #check if part of the flow route has failed
                 else:
                     #check the route for those which have already started
@@ -691,17 +712,20 @@ class NclNetwork:
                             check = False
                             for edg in self.flow_points[v].waypoints:
                                 if edg == self.flow_points[v].edge and check == False:
-                                    check = True #allows to check only those edges which it still has to go over
+                                    #allows to check only those edges which it still has to go over
+                                    check = True 
+                                #if the flow has yet to go over or on the edge
                                 if check == True:
                                     origin, dest = edg.start_node,edg.end_node
                                     #check if edge start has failed
                                     if origin == node_fail.node:
                                         inter_node_rem += 1
-                                        comp_route = [self.flow_points[v].edge]
+                                        
                                         #if both nodes are the same
                                         if self.flow_points[v].edge.end_node == self.flow_points[v].waypoints[-1].end_node:
                                             pass
                                         else:
+                                            #find new route for flow
                                             new_route = self.create_waypoints(self.flow_points[v].edge.start_node,self.flow_points[v].waypoints[-1].end_node,weight)
                                             
                                             if new_route == False:
@@ -711,6 +735,7 @@ class NclNetwork:
                                                 self.flow_points.remove(self.flow_points[v])
                                                 v -= 1
                                             elif new_route == None or new_route == 'key error on source node' or new_route == 'key error on destination node':
+                                                #error returned when finding new route. Report and exit()
                                                 print "An error occured creating the waypoints! Rerouting as node at begining og edge has failed. Error returned was %s" %new_route
                                                 exit()
                                             else:
@@ -720,6 +745,7 @@ class NclNetwork:
                                                 self.flow_points[v].point = 0
                                             #stop this loop as failure found in flow route
                                             break
+                                    
                                     #check if edge end has failed
                                     elif dest == node_fail.node:
                                         inter_node_rem += 1
@@ -737,6 +763,7 @@ class NclNetwork:
                                                 self.flow_points.remove(self.flow_points[v])
                                                 v -= 1
                                             elif new_route == None or new_route == 'key error on source node' or new_route == 'key error on destination node':
+                                                #error returned finding new route. Report and exit.
                                                 print "An error occured creating the waypoints! Rerouting as the end of an edge in an active route had failed. Error returned was %s" %new_route
                                                 exit()
                                             else:
@@ -757,6 +784,7 @@ class NclNetwork:
                             #check if edge start or end has failed
                             if origin == node_fail.node or dest == node_fail.node:
                                 inter_node_rem += 1
+                                #create new route from start node to destination
                                 new_route = self.create_waypoints(self.flow_points[v].waypoints[0].start_node,self.flow_points[v].waypoints[-1].end_node,weight)
                                     
                                 if new_route == False:
@@ -766,15 +794,18 @@ class NclNetwork:
                                     self.flow_points.remove(self.flow_points[v])
                                     v -= 1
                                 elif new_route == None or new_route == 'key error on source node' or new_route == 'key error on destination node':
+                                    #error returned when finding new route. Report and exit.
                                     print "An error has occured creating waypoints. Rerouting a stationary flow due to failure in route. Error returned was %s" %new_route
                                     exit()
                                 else:
+                                    #new route found
                                     reroute_inter_fail += 1
                                     self.flow_points[v] = FlowPoint(self,new_route,self.flow_points[v].start_time)
                                 #stop looping as failure found in flow route
                                 break
                             else: pass
                     else: 
+                        #major error. exit.
                         print "Major error! (b)"
                         exit()     
             v += 1
