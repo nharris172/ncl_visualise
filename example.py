@@ -41,8 +41,8 @@ def run_sim():
     FLOW_SIZE = 2 #active flow size
     FAILED_NODE_SIZE = 4 #size of failed nodes
     FAILED_EDGE_SIZE = 2 #width of failed edges
+    MIN_NODE_SIZE = 2 #minimum size of active node    
     MIN_EDGE_SIZE = 1 #minimum width of an active edge
-    MIN_NODE_SIZE = 2 #minimum size of active node
     
     #size of failure visualisation for nodes and edges
     NODE_FAILURE_SCALE_RANGE = 20
@@ -59,14 +59,14 @@ def run_sim():
     GEO_FAILURE_COLOUR = (0,0,255) #blue
     
     #colours generic
-    BACKGROUND_COLOUR = (0,0,255)
-    LAND_COLOUR = (0,0,0)
-    BUILDINGS_COLOUR = (92,92,92)
-    RIVER_COLOUR = (0,0,255)
+    BACKGROUND_COLOUR = (0,0,255) #blue
+    LAND_COLOUR = (0,0,0) #black
+    BUILDINGS_COLOUR = (92,92,92) #grey
+    RIVER_COLOUR = (0,0,255) #blue
     #------------------------------------------------------------------------------
     #flow variables
     
-    RANDOM_FLOWS = False
+    RANDOM_FLOWS = True
     #file paths for flow origin/destination areas and flow data csv
     ZONES = "C:\\Users\\Craig\\GitRepo\\ncl_visualise\\static_shps\\tyne_wear_msoas.shp"
     FLOW_CSV = "C:\\Users\\Craig\\GitRepo\\ne_cummute_by_car_msoa_edited.csv"    
@@ -100,7 +100,7 @@ def run_sim():
     NODE_EDGE_RANDOM = 'NODE_EDGE' #should be NODE, EDGE or NODE_EDGE
    
     #geo failure
-    GEO_FAILURE = False
+    GEO_FAILURE = True
     SHP_FILE = "C:\\Users\\Craig\\GitRepo\\ncl_visualise\\static_shps\\PiP\\polygon_coastal_flood_eg.shp"
  
     #junction re-assignment - only checks the closest as an alternative
@@ -109,21 +109,25 @@ def run_sim():
     
     #-----------------------------------------------------------------------------
     #for non targeted approach's
-    EDGE_FAILURE_TIME = [
-            datetime.datetime(2014,2,2,7,45)
+    if MANUAL == True:
+        EDGE_FAILURE_TIME = [
+            datetime.datetime(2014,2,2,7,45),
             ]        
-    NODE_FAILURE_TIME = [
+        NODE_FAILURE_TIME = [
             datetime.datetime(2014,2,2,7,40),
             ]
     
     #for targeted appraoch (nodes only)
-    TARGETED_FAILURE_TIMES = [
+    if TARGETED == True:
+        TARGETED_FAILURE_TIMES = [
             #datetime.datetime(2014,2,2,7,5),
             ]
-    #is running a geo failure            
-    GEO_F_TIME = [
-        datetime.datetime(2014,2,2,7,04)  
-        ]
+    if GEO_FAILURE == True:
+        #is running a geo failure
+        GEO_F_TIME = [
+            datetime.datetime(2014,2,2,7,04)  
+            ]
+            
     #-----------------------------------------------------------------------------
     #build network
     path =  os.path.dirname(os.path.realpath(__file__))
@@ -176,7 +180,7 @@ def run_sim():
     
     #this creates the random flows
     routes_not_pos = 0
-    if RANDOM_FLOWS:2
+    if RANDOM_FLOWS:
         for i in range(NUMBER_OF_FLOWS):
             #ensure end doesn't equal start
             random.shuffle(junctions)
@@ -256,9 +260,10 @@ def run_sim():
             #for edge in built_network.edges:failure_edges.append(edge)
                 
         #load polygon onto map for visualisation
-        for ftime in GEO_F_TIME:
-            if ftime == built_network.time:
-                canvas.LoadStatic.Polygon(SHP_FILE,GEO_FAILURE_COLOUR)
+        if  GEO_FAILURE == True:
+            for ftime in GEO_F_TIME:
+                if ftime == built_network.time:
+                    canvas.LoadStatic.Polygon(SHP_FILE,GEO_FAILURE_COLOUR)
      
         #check if any failures are due and reroute flows
         fails = built_network.Failures.check_fails(REASSIGN_START,REASSIGN_DEST,WEIGHT)
