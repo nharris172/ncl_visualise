@@ -68,8 +68,8 @@ def run_sim():
     
     RANDOM_FLOWS = True
     #file paths for flow origin/destination areas and flow data csv
-    ZONES = "C:\\Users\\Craig\\GitRepo\\ncl_visualise\\static_shps\\tyne_wear_msoas.shp"
-    FLOW_CSV = "C:\\Users\\Craig\\GitRepo\\ne_cummute_by_car_msoa_edited.csv"    
+    ZONE_FILE_NAME = "tyne_wear_msoas"
+    FLOW_CSV_NAME = "ne_cummute_by_car_msoa_edited"
     #for random flows        
     NUMBER_OF_FLOWS = 1000
     #for the routing of all flows
@@ -101,7 +101,7 @@ def run_sim():
    
     #geo failure
     GEO_FAILURE = True
-    SHP_FILE = "C:\\Users\\Craig\\GitRepo\\ncl_visualise\\static_shps\\PiP\\polygon_coastal_flood_eg.shp"
+    GEO_SHP_NAME = "polygon_coastal_flood_eg"
  
     #junction re-assignment - only checks the closest as an alternative
     REASSIGN_START = True
@@ -174,8 +174,7 @@ def run_sim():
     
     #SHP_FILE = "C:\\Users\\Craig\\Dropbox\\polygon_multiple_failures_testing.shp"
     #canvas.LoadStatic.Polygon(SHP_FILE,color=(92,92,92))
-    
-   
+
     #------------------------------------------------------------------------------
     
     #this creates the random flows
@@ -193,7 +192,8 @@ def run_sim():
                 routes_not_pos += 1
     else:
         #loads flows and assigns start and end nodes within census zone (AREAS)
-        loaded_flows = tools.load_census_flows(ZONES,FLOW_CSV,built_network)
+        loaded_flows = tools.load_census_flows(os.path.join(path,"static_shps","%s.shp" % ZONE_FILE_NAME),
+                        os.path.join(path,"flow_data","%s.csv" % FLOW_CSV_NAME),built_network)
         for f in loaded_flows:
             secs = random.randint(0,HOURS_TO_RUN_FOR*3600)
             person_start_time  = STARTTIME + datetime.timedelta(0,secs)
@@ -254,16 +254,18 @@ def run_sim():
                                    built_network, failure_junctions, failure_edges)
         #check if a geo failure is scheduled
         if GEO_FAILURE == True:
+            GEO_SHP = os.path.join(path,"static_shps/hazard_areas","%s.shp" % GEO_SHP_NAME)
             failure_junctions, failure_edges = tools.geo_failure_comp(NODE_EDGE_RANDOM, FAILURE_TIMES, FLOW_COUNT_TIME,
-                                   built_network, failure_junctions, failure_edges, SHP_FILE, GEO_F_TIME)
+                                   built_network, failure_junctions, failure_edges, GEO_SHP, GEO_F_TIME)
             #failure_edges = []
             #for edge in built_network.edges:failure_edges.append(edge)
                 
         #load polygon onto map for visualisation
         if  GEO_FAILURE == True:
+            GEO_SHP = os.path.join(path,"static_shps/hazard_areas","%s.shp" % GEO_SHP_NAME)
             for ftime in GEO_F_TIME:
                 if ftime == built_network.time:
-                    canvas.LoadStatic.Polygon(SHP_FILE,GEO_FAILURE_COLOUR)
+                    canvas.LoadStatic.Polygon(GEO_SHP,GEO_FAILURE_COLOUR)
      
         #check if any failures are due and reroute flows
         fails = built_network.Failures.check_fails(REASSIGN_START,REASSIGN_DEST,WEIGHT)
@@ -334,3 +336,4 @@ def run_sim():
     # Be IDLE friendly. If you forget this line, the program will 'hang'
     # on exit.
     canvas.finish()
+run_sim()
