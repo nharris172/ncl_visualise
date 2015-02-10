@@ -101,7 +101,8 @@ def run_sim():
    
     #geo failure
     GEO_FAILURE = True
-    GEO_SHP_NAME = "polygon_coastal_flood_eg"
+    GEO_SHP_NAMES = ["polygon_coastal_flood_eg","spatial_hazards_tw_roads"
+                    ]
  
     #junction re-assignment - only checks the closest as an alternative
     REASSIGN_START = True
@@ -124,15 +125,16 @@ def run_sim():
             ]
     if GEO_FAILURE == True:
         #is running a geo failure
+        #requires a seperate time for each shapefile
         GEO_F_TIME = [
-            datetime.datetime(2014,2,2,7,04)  
+            datetime.datetime(2014,2,2,7,04) ,
+            datetime.datetime(2014,2,2,7,14) 
             ]
             
     #-----------------------------------------------------------------------------
     #build network
     path =  os.path.dirname(os.path.realpath(__file__))
     if net_source_shpfile == True:
-        
         #print os.path.join(path,"networks","%s.shp" % shpfile_name) == '/home/neil/git_rep/ncl_visualise/networks/metro_geo_rail.shp'
         built_network = ncl_network_sim.build_network(os.path.join(path,"networks","%s.shp" % shpfile_name) , speed_att=speed_att, default_speed=default_speed, length_att=length_att)
     elif net_source_shpfile == False:
@@ -252,20 +254,18 @@ def run_sim():
         elif RANDOM_F == True:
             failure_junctions, failure_edges = tools.get_random_comp(NODE_EDGE_RANDOM, RANDOM_FAILURE_TIMES,
                                    built_network, failure_junctions, failure_edges)
-        #check if a geo failure is scheduled
-        if GEO_FAILURE == True:
-            GEO_SHP = os.path.join(path,"static_shps/hazard_areas","%s.shp" % GEO_SHP_NAME)
+        
+        #check if a geo failure is scheduled and a file exists
+        if GEO_FAILURE == True and len(GEO_SHP_NAMES) > 0:
+            GEO_SHP = os.path.join(path,"static_shps/hazard_areas","%s.shp" % GEO_SHP_NAMES[0])
             failure_junctions, failure_edges = tools.geo_failure_comp(NODE_EDGE_RANDOM, FAILURE_TIMES, FLOW_COUNT_TIME,
                                    built_network, failure_junctions, failure_edges, GEO_SHP, GEO_F_TIME)
-            #failure_edges = []
-            #for edge in built_network.edges:failure_edges.append(edge)
-                
-        #load polygon onto map for visualisation
-        if  GEO_FAILURE == True:
-            GEO_SHP = os.path.join(path,"static_shps/hazard_areas","%s.shp" % GEO_SHP_NAME)
+
+            #load polygon onto map for visualisation
             for ftime in GEO_F_TIME:
                 if ftime == built_network.time:
                     canvas.LoadStatic.Polygon(GEO_SHP,GEO_FAILURE_COLOUR)
+                    GEO_SHP_NAMES.pop(0) #remove the first in list as used above
      
         #check if any failures are due and reroute flows
         fails = built_network.Failures.check_fails(REASSIGN_START,REASSIGN_DEST,WEIGHT)
