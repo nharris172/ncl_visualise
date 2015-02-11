@@ -187,6 +187,33 @@ def write_failure_data(META_FILE,MANUAL,RANDOM_TIME,TIME_INTERVALS,NUMBER_OF_FAI
     META_FILE.write("------------------------------\n")
     return
 
+def area_sign(poly):
+    res = 0
+    for i in range(0,len(poly)-2):
+        p1 = poly[i]
+        p2 = poly[i+1]
+        res += (p1[0]*p2[1])-(p1[1]*p2[0])
+        
+    if res < 0: return -1
+    elif res > 0: return 1
+    else: return 0
+        
+def line_intersection(line1,line2):
+    l1p1 = line1[0];l1p2 = line1[1]
+    l2p1 = line2[0];l2p2 = line2[1]
+
+    poly=[l1p1,l1p2,l2p1,l1p1]    
+    sign1 = area_sign(poly)
+    poly=[l1p1,l1p2,l2p2,l1p1]    
+    sign2 = area_sign(poly)
+    poly=[l2p1,l2p2,l1p1,l2p1]
+    sign3 = area_sign(poly)
+    poly=[l2p1,l2p2,l1p2,l2p1]
+    sign4 = area_sign(poly)
+    
+    if sign1 <> sign2 and sign3 <> sign4: return 1 #inserect
+    else: return 0 #do not intersect
+    
 def point_in_poly(coord,poly):
     x,y = coord
     n = len(poly)
@@ -205,7 +232,7 @@ def point_in_poly(coord,poly):
         p1x,p1y = p2x,p2y
 
     return inside
-
+   
 def geo_failure(shp_file, junctions, net_edges):
     import shapefile
     polygons = []
@@ -221,22 +248,33 @@ def geo_failure(shp_file, junctions, net_edges):
     nodes_inside = []
     number_inside = 0
     #extract list of coords
+    #loop through the polygons in the shapefile
     for polygon in polygons:
+        #loop through the junctions in the network
         for nd in junctions:
             coords = nd.geom
             x,y = coords[0],coords[1]
             coord = float(x),float(y)
+            #find if the junction lies in the polygon
             inside = point_in_poly(coord,polygon)
             if inside == True:
                 nodes_inside.append(nd)
                 number_inside += 1
     
+    #find those edges where at least one of is endpoints have failed
     failed_edges = []
-    
     for eg in net_edges:
         for nd in nodes_inside:
             if eg.start_node == nd or eg.end_node == nd:
                 failed_edges.append(eg)
+    
+    #find all edge segments which are in the hazard areas
+    #loop thorugh all edge segments(line1)
+    #loop through edge segments of polygon (line2)
+    #use a line intersection algorithm to check
+    intersect = line_intersection(line1,line2)
+    #once found a segment, need to remove the whole edge
+    #add edge to failed egdes list
     
     return number_inside,nodes_inside,failed_edges
     

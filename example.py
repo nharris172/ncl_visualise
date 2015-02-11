@@ -7,7 +7,6 @@ import os
 
 def run_sim():
     
-    
     #-------------------------------------------------------------------------#
     #network based variables
     
@@ -81,9 +80,9 @@ def run_sim():
     #outputs
     PRINT_STATS = False
     RECORD = False
-    #FILE_PATH = "C:\\Users\\Craig\\network_vis_tool\\vis_sim\\temp_%s-%s-%s.jpg"
-    FILE_PATH = "C:\\Users\\Craig\\network_vis_tool\\vis_sim - TW\\temp%s.jpg"
-    if RECORD == True: META_FILE = open("C:\\Users\\Craig\\network_vis_tool\\vis_sim - TW\\metadata.txt","w")
+    OUTPUT_STEM = "C:\\Users\\Craig\\network_vis_tool\\" 
+    FILE_PATH = OUTPUT_STEM+"vis_sim - TW\\temp%s.jpg"
+    if RECORD == True: META_FILE = open(OUTPUT_STEM+"vis_sim - TW\\metadata.txt","w")
 
     #------------------------------------------------------------------------------
     #Variables to tailor failure analysis
@@ -132,6 +131,9 @@ def run_sim():
             ]
             
     #-----------------------------------------------------------------------------
+    #-----------------------------------------------------------------------------
+    #           Anything below should rarely be changed manually
+    #-----------------------------------------------------------------------------
     #build network
     path =  os.path.dirname(os.path.realpath(__file__))
     if net_source_shpfile == True:
@@ -173,9 +175,6 @@ def run_sim():
     #canvas.LoadStatic.Polygon("static_shps/Leeds_roads_buildings.shp",color=(92,92,92))
     #canvas.LoadStatic.Polygon("static_shps/greatbritain",color=(92,92,92))
     #canvas.LoadStatic.Polygon("static_shps/london_dlr_buildings.shp",color=(92,92,92))
-    
-    #SHP_FILE = "C:\\Users\\Craig\\Dropbox\\polygon_multiple_failures_testing.shp"
-    #canvas.LoadStatic.Polygon(SHP_FILE,color=(92,92,92))
 
     #------------------------------------------------------------------------------
     
@@ -257,7 +256,7 @@ def run_sim():
         
         #check if a geo failure is scheduled and a file exists
         if GEO_FAILURE == True and len(GEO_SHP_NAMES) > 0:
-            GEO_SHP = os.path.join(path,"static_shps/hazard_areas","%s.shp" % GEO_SHP_NAMES[0])
+            GEO_SHP = os.path.join(path,"static_shps\hazard_areas","%s.shp" % GEO_SHP_NAMES[0])
             failure_junctions, failure_edges = tools.geo_failure_comp(NODE_EDGE_RANDOM, FAILURE_TIMES, FLOW_COUNT_TIME,
                                    built_network, failure_junctions, failure_edges, GEO_SHP, GEO_F_TIME)
 
@@ -336,4 +335,5 @@ def run_sim():
     # Be IDLE friendly. If you forget this line, the program will 'hang'
     # on exit.
     canvas.finish()
+
 run_sim()
