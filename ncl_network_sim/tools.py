@@ -45,8 +45,8 @@ def generate_failure_times(RANDOM,TIME_INTERVALS,NUMBER_OF_FAILURES,STARTTIME,HO
     return failure_times
 
 def get_random_comp(NODE_EDGE_RANDOM, failure_times, built_network, junctions, net_edges):
-    """Checks to see if any random failurs are schedules, and if so selects a 
-    node or edge at random for removal"""
+    """Checks to see if any random failurs are scheduled, and if so selects a 
+    node or edge at random for removal."""
     for ftime in failure_times:
         #if appropriate time
         if ftime >= built_network.time and ftime < built_network.time + built_network.tick_rate:
@@ -199,6 +199,8 @@ def area_sign(poly):
     else: return 0
         
 def line_intersection(line1,line2):
+    
+    
     l1p1 = line1[0];l1p2 = line1[1]
     l2p1 = line2[0];l2p2 = line2[1]
 
@@ -270,11 +272,22 @@ def geo_failure(shp_file, junctions, net_edges):
     
     #find all edge segments which are in the hazard areas
     #loop thorugh all edge segments(line1)
-    #loop through edge segments of polygon (line2)
-    #use a line intersection algorithm to check
-    intersect = line_intersection(line1,line2)
+    lines_inter = 0
+    for eg in net_edges:
+        line1=eg.start_node.geom,eg.end_node.geom
+        for polygon in polygons:
+            #loop through edge segments of polygon (line2)
+            for i in range(0,len(polygon)-1):
+                line2=polygon[i],polygon[i+1]
+                #use a line intersection algorithm to check
+                intersect = line_intersection(line1,line2)
+                if intersect == 1: #lines intersect
+                    lines_inter += 1
+                    failed_edges.append(eg)
+                
+    print 'lines_inter:',lines_inter   
     #once found a segment, need to remove the whole edge
-    #add edge to failed egdes list
+    #add edge to failed egdes
     
     return number_inside,nodes_inside,failed_edges
     
@@ -283,12 +296,11 @@ def geo_failure_comp(NODE_EDGE_RANDOM,FAILURE_TIMES,FLOW_COUNT_TIME,built_networ
     for ftime in GEO_F_TIME:
         #if appropriate time
         if ftime >= built_network.time and ftime < built_network.time + built_network.tick_rate:
- 
+            #get nodes and edges affecred by hazard area
             number_inside,nodes_inside,failed_edges = geo_failure(SHP_FILE,junctions,edge_set)
             for nd in nodes_inside:
                 #add node failure
                 built_network.Failures.add_node_fail(nd,ftime)
-                
                 try:
                     junctions.remove(nd)
                 except:
@@ -296,13 +308,14 @@ def geo_failure_comp(NODE_EDGE_RANDOM,FAILURE_TIMES,FLOW_COUNT_TIME,built_networ
                     pass
             #add edge failure             
             for edge in failed_edges:
-            #   built_network.Failures.add_edge_fail(edge,ftime)    
+                #
+                built_network.Failures.add_edge_fail(edge,ftime)    
                 try:
                     edge_set.remove(edge)                
                 except:
                     #the edge may have already been removed in another failure process
                     pass
-                    
+            print 'edge failures added'
     return junctions, edge_set
 
 

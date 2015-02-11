@@ -7,7 +7,7 @@ from tools import truncate_geom_funtion_maker
     
 
 
-def build_network(shp_file, speed_att=None,default_speed=1, length_att=None,dp=1):
+def build_network(shp_file,speed_att=None,default_speed=1,length_att=None,dp=1):
     sf = shapefile.Reader(shp_file)
     shapes = sf.shapes()
     _truncate_geom = truncate_geom_funtion_maker(dp)
