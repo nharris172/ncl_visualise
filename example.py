@@ -92,11 +92,11 @@ def run_sim():
     TIME_INTERVALS = None #set an interval(mins) between failures.
     NUMBER_OF_FAILURES = 5 #the number of failures which are to occur.
     
-    RANDOM_F = False
-    TARGETED = True #if selecting nodes by their flow value - will also add degree - may be able to get rid of this
+    RANDOM_F = True
+    TARGETED = False #if selecting nodes by their flow value - will also add degree - may be able to get rid of this
     FLOW = True #removes the node which the greatest number of flows have passed through in the last 10mins for example
     DEGREE = False #does not yet work
-    NODE_EDGE_RANDOM = 'NODE_EDGE' #should be NODE, EDGE or NODE_EDGE
+    NODE_EDGE_RANDOM = 'EDGE' #should be NODE, EDGE or NODE_EDGE
    
     #geo failure
     GEO_FAILURE = True

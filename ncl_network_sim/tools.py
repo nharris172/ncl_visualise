@@ -278,6 +278,9 @@ def geo_failure(shp_file, junctions, net_edges):
         for polygon in polygons:
             #loop through edge segments of polygon (line2)
             for i in range(0,len(polygon)-1):
+                print polygon
+                print polygon[i]
+                exit()
                 line2=polygon[i],polygon[i+1]
                 #use a line intersection algorithm to check
                 intersect = line_intersection(line1,line2)
