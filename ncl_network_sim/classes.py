@@ -432,11 +432,12 @@ class NclNetwork:
         network."""
         #find the edge to remove
         start,end = edgefail.edge.start_node,edgefail.edge.end_node
-             
-        try:        
-            self.graph.remove_edge(start._truncated_geom,end._truncated_geom)
+        #as some edges may have been removed as one of thier end nodes has 
+        #failed, this is encased in a  try statement
+        try:
             #remove the edge from the network
-            print "Removed edge(",start._truncated_geom,",",end._truncated_geom,")"      
+            self.graph.remove_edge(start._truncated_geom,end._truncated_geom)
+            
             v = 0
             avg_b = self.average_journey_length()
             avg_time_b = self.average_journey_length(length=False)
@@ -517,7 +518,7 @@ class NclNetwork:
         """
         #remove a junction from the network
         node_to_remove = node_fail.node._truncated_geom
-        print "Removed node(",node_fail.node._truncated_geom,")"
+
         #remove the failed node from the network
         try:
             self.graph.remove_node(node_to_remove)

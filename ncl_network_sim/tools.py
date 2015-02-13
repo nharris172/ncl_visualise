@@ -188,15 +188,17 @@ def write_failure_data(META_FILE,MANUAL,RANDOM_TIME,TIME_INTERVALS,NUMBER_OF_FAI
     return
 
 def area_sign(poly):
-    res = 0
-    for i in range(0,len(poly)-2):
+    res = 0.0
+    for i in range(0,len(poly)-1):
         p1 = poly[i]
         p2 = poly[i+1]
         res += (p1[0]*p2[1])-(p1[1]*p2[0])
         
     if res < 0: return -1
     elif res > 0: return 1
-    else: return 0
+    elif res == 0: return 0
+    else: "Major error. Logic error."
+
         
 def line_intersection(line1,line2):
     
@@ -270,7 +272,7 @@ def geo_failure(shp_file, junctions, net_edges):
             if eg.start_node == nd or eg.end_node == nd:
                 failed_edges.append(eg)
     
-    #find all edge segments which are in the hazard areas
+    #find all edge segments which intersect with the hazard areas
     #loop thorugh all edge segments(line1)
     lines_inter = 0
     for eg in net_edges:
@@ -278,17 +280,27 @@ def geo_failure(shp_file, junctions, net_edges):
         for polygon in polygons:
             #loop through edge segments of polygon (line2)
             for i in range(0,len(polygon)-1):
-                print polygon
-                print polygon[i]
-                exit()
                 line2=polygon[i],polygon[i+1]
                 #use a line intersection algorithm to check
                 intersect = line_intersection(line1,line2)
                 if intersect == 1: #lines intersect
                     lines_inter += 1
                     failed_edges.append(eg)
+
+    #find all edge segments which lie within a hazard area
+    lines_in = 0
+    for eg in net_edges:
+        line1=eg.start_node.geom,eg.end_node.geom
+        for polygon in polygons:
+            inside1 = point_in_poly(line1[0],polygon)
+            if inside1 == True:
+                inside2 = point_in_poly(line1[1],polygon)
+                if inside2 == True:
+                    lines_in += 1
+                    failed_edges.append(eg)
                 
     print 'lines_inter:',lines_inter   
+    print 'lines_inside:',lines_in
     #once found a segment, need to remove the whole edge
     #add edge to failed egdes
     

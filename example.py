@@ -18,6 +18,7 @@ def run_sim():
     
     #shpfile_name = "tw_m_a_b_w_speeds_TEMPfixONLY"
     shpfile_name = "metro_geo_rail"
+    #shpfile_name = "line_intersect_test"
     #shpfile_name = "leeds_m_a_b_w_travel_time"
     #shpfile_name = "uk_internal_routes"
     #shpfile_name = "london_dlr_lines"
@@ -92,7 +93,7 @@ def run_sim():
     TIME_INTERVALS = None #set an interval(mins) between failures.
     NUMBER_OF_FAILURES = 5 #the number of failures which are to occur.
     
-    RANDOM_F = True
+    RANDOM_F = False
     TARGETED = False #if selecting nodes by their flow value - will also add degree - may be able to get rid of this
     FLOW = True #removes the node which the greatest number of flows have passed through in the last 10mins for example
     DEGREE = False #does not yet work
@@ -100,7 +101,7 @@ def run_sim():
    
     #geo failure
     GEO_FAILURE = True
-    GEO_SHP_NAMES = ["polygon_coastal_flood_eg","spatial_hazards_tw_roads"
+    GEO_SHP_NAMES = ["spatial_hazards_tw_roads","polygon_coastal_flood_eg" #"one_hazard"
                     ]
  
     #junction re-assignment - only checks the closest as an alternative
