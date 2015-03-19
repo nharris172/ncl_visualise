@@ -7,9 +7,7 @@ def edge_remove(network, edgefails, reassign_start, reassign_dest, weight):
     """Updates all affected flow points when an edge is removed from the
     network."""
     # find the edge to remove
-
     failed_edges = []
-
     for edgefail in edgefails:
         if edgefail.failed:
             continue
@@ -29,13 +27,11 @@ def edge_remove(network, edgefails, reassign_start, reassign_dest, weight):
         if edge.failed:
             continue
         start, end = edge.start_node, edge.end_node
-        if (start._truncated_geom, end._truncated_geom) not in nx_edges:
+        if (start._truncated_geom, end._truncated_geom) not in nx_edges and (end._truncated_geom,start._truncated_geom) not in nx_edges:
             edge.failed = True
     # as some edges may have been removed as one of thier end nodes has
     # failed, this is encased in a  try statement
     # remove the edge from the network
-    for edgefail in edgefails:
-        start, end = edgefail.start_node, edgefail.end_node
 
     v = 0
     avg_b = network.average_journey_length()
@@ -49,12 +45,16 @@ def edge_remove(network, edgefails, reassign_start, reassign_dest, weight):
                 for edge in network.flow_points[v].waypoints:
                     origin, dest = edge.start_node, edge.end_node
                     # find any possible route uses the edge
-                    if (origin, dest) in failed_edges:
+                    if edge.failed:
                         # get start and end nodes
                         start_waypoint = network.flow_points[
                             v].waypoints[0].start_node
+                        if start_waypoint.failed:
+                            start_waypoint = network._nearest_node(start_waypoint)
                         end_waypoint = network.flow_points[
                             v].waypoints[-1].end_node
+                        if end_waypoint.failed:
+                            end_waypoint = network._nearest_node(end_waypoint)
                         # calcualte the new route, if one is possible
                         new_route = network._create_waypoints(
                             start_waypoint,
@@ -66,11 +66,6 @@ def edge_remove(network, edgefails, reassign_start, reassign_dest, weight):
                             network.flow_points.remove(network.flow_points[v])
                             v -= 1
                             noroute += 1
-                        elif new_route is None:
-                            # this will only be used if an unknown error is
-                            # generated in the _create_waypoints function
-                            print "An error has occured in creating the waypoints"
-                            exit()
                         else:
                             reroute += 1
                             # if a route has been sucessfuly found
@@ -84,12 +79,16 @@ def edge_remove(network, edgefails, reassign_start, reassign_dest, weight):
                 for edge in network.flow_points[v].waypoints:
                     origin, dest = edge.start_node, edge.end_node
                     # find any possible route uses the edge
-                    if (origin, dest) in failed_edges:
+                    if edge.failed:
                         # get start and end nodes
                         start_waypoint = network.flow_points[
-                            v].edge.start_node
+                            v].waypoints[0].start_node
+                        if start_waypoint.failed:
+                            start_waypoint = network._nearest_node(start_waypoint)
                         end_waypoint = network.flow_points[
                             v].waypoints[-1].end_node
+                        if end_waypoint.failed:
+                            end_waypoint = network._nearest_node(end_waypoint)
                         # calcualte the new route, if one is possible
                         new_route = network._create_waypoints(
                             start_waypoint,
@@ -101,11 +100,6 @@ def edge_remove(network, edgefails, reassign_start, reassign_dest, weight):
                             network.flow_points.remove(network.flow_points[v])
                             v -= 1
                             noroute += 1
-                        elif new_route is None:
-                            # this will only be used if an unknown error is
-                            # generated in the _create_waypoints function
-                            print "An error has occured in creating the waypoints!"
-                            exit()
                         else:
                             reroute += 1
                             # if a route has been sucessfuly found
@@ -134,6 +128,7 @@ def node_remove(network, nodes, reassign_start, reassign_dest, weight):
     # remove a junction from the network
     for node in nodes:
         if node.failed:
+            1/0
             continue
         node.failed = True
         node_to_remove = node._truncated_geom
@@ -152,8 +147,9 @@ def node_remove(network, nodes, reassign_start, reassign_dest, weight):
         if edge.failed:
             continue
         start, end = edge.start_node, edge.end_node
-        if (start._truncated_geom, end._truncated_geom) not in nx_edges:
+        if (start._truncated_geom, end._truncated_geom) not in nx_edges and (end._truncated_geom, start._truncated_geom) not in nx_edges:
             edge.failed = True
+
 
     # calculate the average journey lengths/times
     avg_b = network.average_journey_length()
@@ -173,7 +169,7 @@ def node_remove(network, nodes, reassign_start, reassign_dest, weight):
             dest_junction = network.flow_points[v].waypoints[-1].end_node
 
             # check if flow origin has failed
-            if start_junction.geom in failed_nodes:
+            if start_junction.failed:
                 start_rem += 1  # count flow as start being removed
                 # if the flow has started
                 if network.flow_points[v].started:
@@ -188,7 +184,6 @@ def node_remove(network, nodes, reassign_start, reassign_dest, weight):
                         # get nearest possible junction as a new start node
                         new_start_junction = network._nearest_node(
                             start_junction)
-                        print new_start_junction == start_junction
                         if new_start_junction == dest_junction:
                             # remove flow if new start == dest or == failed
                             network.flow_points.remove(network.flow_points[v])
@@ -208,10 +203,6 @@ def node_remove(network, nodes, reassign_start, reassign_dest, weight):
                                 network.flow_points.remove(
                                     network.flow_points[v])
                                 v -= 1
-                            elif new_route is None or new_route == 'key error on source node' or new_route == 'key error on destnation node':
-                                # catch error and stop simulation
-                                print "An error occured creating the waypoints! Reason for rerouting was due to failure of start node for flow. Error returned was %s" % new_route
-                                exit()
                             else:
                                 # new route found
                                 reroute_start_fail += 1
@@ -225,13 +216,9 @@ def node_remove(network, nodes, reassign_start, reassign_dest, weight):
                         network.flow_points.remove(network.flow_points[v])
                         failed_start_rem += 1
                         v -= 1
-                else:
-                    # indicates a major error - stop simulation
-                    print "---\nMajor error! (c)\n---"
-                    exit()
 
             # check if flow destination has failed
-            elif dest_junction.geom in failed_nodes:
+            elif dest_junction.failed:
                 # record that a flow has had it destination removed
                 dest_rem += 1
                 # if the user wants the flow to be rerouted to the nearest
@@ -240,7 +227,7 @@ def node_remove(network, nodes, reassign_start, reassign_dest, weight):
                     # find nearest junction to the failed
                     new_dest_junction = network._nearest_node(dest_junction)
 
-                    if new_dest_junction == start_junction or new_dest_junction in failed_nodes:
+                    if new_dest_junction == start_junction:
                         # remove flow if new dest == start or == failed
                         network.flow_points.remove(network.flow_points[v])
                         failed_dest_rem += 1
@@ -281,11 +268,6 @@ def node_remove(network, nodes, reassign_start, reassign_dest, weight):
                                     network.flow_points.remove(
                                         network.flow_points[v])
                                     v -= 1
-                                elif new_route is None or new_route == 'key error on source node' or new_route == 'key error on destination node':
-                                    # if an error is returned from the
-                                    # rerouting. Report and exit.
-                                    print "An error occured creating the waypoints! Rerouting as the flow destination had failed. Error returned was %s" % new_route
-                                    exit()
                                 else:
                                     # route found to new destination
                                     reroute_dest_fail += 1
@@ -312,11 +294,6 @@ def node_remove(network, nodes, reassign_start, reassign_dest, weight):
                                     network.flow_points.remove(
                                         network.flow_points[v])
                                     v -= 1
-                                elif new_route is None or new_route == 'key error on source node' or new_route == 'key error on destination node':
-                                    # error returned finding new route.
-                                    # Report and exit.
-                                    print "An error has occured creating waypoints! Rerouting as the flow destination has failed. Error returned was %s" % new_route
-                                    exit()
                                 else:
                                     # new route found to new dest
                                     reroute_dest_fail += 1
@@ -341,12 +318,6 @@ def node_remove(network, nodes, reassign_start, reassign_dest, weight):
                                 failed_dest_rem += 1
                                 network.flow_points.remove(
                                     network.flow_points[v])
-                                v -= 1
-                            elif new_route is None or new_route == 'key error on source node' or new_route == 'key error on destination node':
-                                # error returned finding new route. Report
-                                # and exit.
-                                print "An error occured creating the waypoints! Rerouting as dest node failed on inactive flow. Error returned was %s" % new_route
-                                exit()
                             else:
                                 # new route found
                                 reroute_dest_fail += 1
@@ -354,10 +325,6 @@ def node_remove(network, nodes, reassign_start, reassign_dest, weight):
                                     network,
                                     new_route,
                                     network.flow_points[v].start_time)
-                        else:
-                            # indicates a major error
-                            print "Major error! (a)"
-                            exit()
                 else:
                     # remove flow as user requested no reassignment of
                     # destinations
@@ -372,7 +339,7 @@ def node_remove(network, nodes, reassign_start, reassign_dest, weight):
                     # first check if the node at the end of the current
                     # edge has failed
                     if network.flow_points[
-                            v].edge.end_node.geom in failed_nodes:
+                            v].edge.end_node.failed:
                         # the flow is on an edge with no node at its end,
                         # thus should be removed
                         inter_node_rem += 1
@@ -380,7 +347,7 @@ def node_remove(network, nodes, reassign_start, reassign_dest, weight):
                         noroute += 1
                         network.flow_points.remove(network.flow_points[v])
                         v -= 1
-                    elif network.flow_points[v].edge.start_node.geom in failed_nodes:
+                    elif network.flow_points[v].edge.start_node.failed:
                         # the flow should not be affected by this but need
                         # to catch here
                         pass
@@ -398,8 +365,7 @@ def node_remove(network, nodes, reassign_start, reassign_dest, weight):
                             if check:
                                 origin, dest = edg.start_node, edg.end_node
                                 # check if edge start has failed
-                                if origin.geom in failed_nodes:
-                                    print 'rerouting node'
+                                if origin.failed:
                                     inter_node_rem += 1
 
                                     # if both nodes are the same
@@ -418,11 +384,6 @@ def node_remove(network, nodes, reassign_start, reassign_dest, weight):
                                             network.flow_points.remove(
                                                 network.flow_points[v])
                                             v -= 1
-                                        elif new_route is None or new_route == 'key error on source node' or new_route == 'key error on destination node':
-                                            # error returned when finding
-                                            # new route. Report and exit()
-                                            print "An error occured creating the waypoints! Rerouting as node at begining og edge has failed. Error returned was %s" % new_route
-                                            exit()
                                         else:
                                             # new route found
                                             reroute_inter_fail += 1
@@ -434,7 +395,7 @@ def node_remove(network, nodes, reassign_start, reassign_dest, weight):
                                         break
 
                                 # check if edge end has failed
-                                elif dest in failed_nodes:
+                                elif dest.failed:
                                     inter_node_rem += 1
                                     comp_route = [network.flow_points[v].edge]
                                     # if both nodes are the same
@@ -454,11 +415,6 @@ def node_remove(network, nodes, reassign_start, reassign_dest, weight):
                                             network.flow_points.remove(
                                                 network.flow_points[v])
                                             v -= 1
-                                        elif new_route is None or new_route == 'key error on source node' or new_route == 'key error on destination node':
-                                            # error returned finding new
-                                            # route. Report and exit.
-                                            print "An error occured creating the waypoints! Rerouting as the end of an edge in an active route had failed. Error returned was %s" % new_route
-                                            exit()
                                         else:
                                             # new route found
                                             reroute_inter_fail += 1
@@ -480,7 +436,7 @@ def node_remove(network, nodes, reassign_start, reassign_dest, weight):
                     for edge in network.flow_points[v].waypoints:
                         origin, dest = edge.start_node, edge.end_node
                         # check if edge start or end has failed
-                        if origin.geom in failed_nodes or dest.geom in failed_nodes:
+                        if origin.failed or dest.failed:
                             inter_node_rem += 1
                             # create new route from start node to
                             # destination
@@ -494,11 +450,6 @@ def node_remove(network, nodes, reassign_start, reassign_dest, weight):
                                 network.flow_points.remove(
                                     network.flow_points[v])
                                 v -= 1
-                            elif new_route is None or new_route == 'key error on source node' or new_route == 'key error on destination node':
-                                # error returned when finding new route.
-                                # Report and exit.
-                                print "An error has occured creating waypoints. Rerouting a stationary flow due to failure in route. Error returned was %s" % new_route
-                                exit()
                             else:
                                 # new route found
                                 reroute_inter_fail += 1
@@ -510,10 +461,6 @@ def node_remove(network, nodes, reassign_start, reassign_dest, weight):
                             break
                         else:
                             pass
-                else:
-                    # major error. exit.
-                    print "Major error! (b)"
-                    exit()
         v += 1
 
     # calcaulate the average journey length
@@ -530,7 +477,6 @@ class NetworkFailure:
 
     def __init__(self, fail, time, nodes, edges):
         self.time = time
-
         self.edges = edges
         self.nodes = nodes
         self.fail_attr = fail
@@ -622,3 +568,4 @@ class Failures:
             random.shuffle(net_nodes)
             nodes = [net_nodes[0]]
         self._network.Failures.add_failure(nodes, edges, time)
+
